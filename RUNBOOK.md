@@ -40,15 +40,17 @@ From the repository root:
 
 The script prints a banner with the URLs when everything is up. Press `Ctrl-C` in that terminal to stop everything.
 
-Open http://localhost:5173. A healthy start shows the **Customer App** tab with a phone on **My Accounts** and a total balance of $180,000.00, a **Happy Path** pill next to the gear icon, a **Behind the Scenes** panel that reads "Initiate a transfer to see what happens behind the scenes", and the **Workflow Code** panel. The Temporal UI is at http://localhost:8233.
+Open http://localhost:5173. A healthy start shows the **Customer App** tab with a phone on **My Accounts** and a total balance of $180,000.00, a **Happy Path** button next to the settings icon in the top-right corner, a **Behind the Scenes** panel that reads "Initiate a transfer to see what happens behind the scenes", and the **Workflow Code** panel. The Temporal UI is at http://localhost:8233.
 
-The purple pill next to the gear opens the Namespace in the Temporal UI. After you confirm a transfer, the **Temporal Workflow** badge at the top of **Behind the Scenes** opens that transfer's execution.
+The scenario button next to the settings icon opens the Namespace in the Temporal UI. After you confirm a transfer, **Open in Temporal UI** at the top of **Behind the Scenes** opens that transfer's execution.
+
+To give a panel more room on screen, drag the divider between two panels. Double-click a divider to reset it. The browser remembers the widths.
 
 ## The walkthrough
 
 Every beat starts the same way: pick the scenario, then send a transfer.
 
-1. Click the gear icon (**Demo Settings**) and click a scenario under **Transfer Scenario**. The modal closes and the phone goes back to **My Accounts**.
+1. Click the settings icon in the top-right corner (**Demo Settings**) and click a scenario under **Transfer Scenario**. The settings panel closes and the phone goes back to **My Accounts**.
 2. On the phone, press **Send Money**. Pick a **From** and a **To** account, type an amount or press one of **$50**, **$100**, **$250**, **$500**, and press **Review Transfer**.
 3. Press **Confirm Transfer**. The phone switches to **Transfer Status**.
 4. When it finishes, press **New Transfer** to go back to the accounts.
@@ -74,7 +76,7 @@ The **Workflow Code** panel is a simplified picture of the Workflow, not a copy 
 4. Say: "The withdrawal service was down for a few seconds. Nobody wrote retry code for that. The Activity has a retry policy, and Temporal retried it with backoff until the service came back."
 5. For proof, open the execution while it's retrying: the pending Activity shows its attempt count and last failure. The Event History doesn't get an event per failed attempt; it records the Activity once, when it finishes.
 
-The settings modal says the deposit fails in this scenario. In the code, it's the withdrawal. The "/10" is a label the Activity sends to the UI; the real retry policy has no attempt limit.
+The settings panel says the deposit fails in this scenario. In the code, it's the withdrawal. The "/10" is a label the Activity sends to the UI; the real retry policy has no attempt limit.
 
 ### 3. The deposit is rejected, and the money goes back (Invalid Account)
 
@@ -91,6 +93,8 @@ This scenario fails every transfer, whichever accounts you pick. The **Invalid T
 2. After the withdrawal, the phone shows **Awaiting Approval** and **Behind the Scenes** shows **Await Approval** running.
 3. Switch to the **Bank Operations** tab. The transfer appears under **Pending Approval** within a couple of seconds. Press **Approve** within 30 seconds of the withdrawal.
 4. Switch back to **Customer App**. The deposit and notification run, and the phone ends on **Transfer Complete!**.
+
+   To stay on **Customer App**, press **Approve transfer** on the **Await Approval** step in **Behind the Scenes** instead of steps 3 and 4. It sends the same Signal.
 5. Say: "The Workflow has been waiting for a Signal from the bank's back office. It isn't holding a thread or polling a database. When the employee approves, Temporal delivers the Signal and the transfer carries on. It can wait like that for 30 seconds or 30 days."
 6. For proof, open the execution and find the `WorkflowExecutionSignaled` event for `approveTransfer`.
 
@@ -112,7 +116,7 @@ This beat needs a local run, because you edit the Workflow code and restart the 
 8. Say: "We fixed the code and restarted the Worker. The transfer picked up after the withdrawal it had already done, and didn't withdraw twice."
 9. Undo the edit afterwards: `git checkout -- workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py`.
 
-The settings modal says this scenario "demonstrates versioning/patching". The walkthrough above fixes the code in place. The fix only adds steps after the point where the Workflow stopped, so the transfer's history replays cleanly on the new code.
+The settings panel says this scenario "demonstrates versioning/patching". The walkthrough above fixes the code in place. The fix only adds steps after the point where the Workflow stopped, so the transfer's history replays cleanly on the new code.
 
 On tmprl-demo.cloud you can show steps 1 to 4 but not the fix. Terminate the transfer afterwards; see [Reset and tear down](#reset-and-tear-down).
 
