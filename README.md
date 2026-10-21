@@ -30,11 +30,11 @@ To present the demo, follow [RUNBOOK.md](RUNBOOK.md): the walkthrough beat by be
 
 ### 1. Send a transfer (Happy Path)
 
-Browse your accounts, pick a sender and recipient, enter an amount, and confirm. The behind-the-scenes panel shows each workflow activity executing. The code panel on the right shows the actual workflow code lighting up in real time.
+Browse your accounts, pick a sender and recipient, enter an amount, and confirm. The behind-the-scenes panel shows each workflow activity executing. The code panel on the right shows the actual workflow code lighting up in real time. Drag the dividers between the three panels to resize them (double-click a divider to reset it).
 
 ### 2. Explore the six scenarios
 
-Click the gear icon to switch scenarios:
+Click the settings icon in the top-right corner to switch scenarios:
 
 | Scenario | What Happens | Key Temporal Feature |
 |---|---|---|
@@ -47,7 +47,7 @@ Click the gear icon to switch scenarios:
 
 ### 3. Bank Operations tab
 
-Switch to the **Bank Operations** tab to act as a bank employee. When running the Human-in-the-Loop scenario, pending transfers appear here for approval or denial. If you don't act within 30 seconds, the transfer times out and compensation runs automatically.
+Switch to the **Bank Operations** tab to act as a bank employee. When running the Human-in-the-Loop scenario, pending transfers appear here for approval or denial. You can also press **Approve transfer** on the **Await Approval** step in the behind-the-scenes panel without leaving the Customer App. If no one approves within 30 seconds, the workflow fails with `ApprovalTimeout`.
 
 ### 4. Inspect real workflows
 
@@ -191,6 +191,6 @@ uv run python -m banking_workflows.codec_server                                 
 
 ## Settings
 
-Click the gear icon to configure:
+Click the settings icon in the top-right corner to configure:
 - **Transfer Scenario**: Happy Path, Advanced Visibility, Human-in-the-Loop, API Downtime, Bug in Workflow, Invalid Account
 - **Presentation Mode**: Simple (high-level) vs Detailed (retries, error messages, payloads)
