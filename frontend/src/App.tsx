@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AccountsList } from './components/AccountsList'
 import { BackstagePanel } from './components/BackstagePanel'
 import { BankOperations } from './components/BankOperations'
 import { PhoneFrame } from './components/PhoneFrame'
+import { ResizeHandle } from './components/ResizeHandle'
 import { SettingsModal } from './components/SettingsModal'
 import { TemporalCodeView } from './components/TemporalCodeView'
 import { TransferForm } from './components/TransferForm'
 import { TransferReview } from './components/TransferReview'
 import { TransferTracker } from './components/TransferTracker'
+import { PANE_MIN, usePaneWidths } from './hooks/usePaneWidths'
 import { useSSE } from './hooks/useSSE'
 import type {
   Account,
@@ -45,6 +47,9 @@ function App() {
   const [temporalUi, setTemporalUi] = useState<TemporalUiInfo | null>(null)
   const [temporalWorkflowUrl, setTemporalWorkflowUrl] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [backstageCollapsed, setBackstageCollapsed] = useState(false)
+  const panesRef = useRef<HTMLDivElement>(null)
+  const panes = usePaneWidths(panesRef, !backstageCollapsed)
 
   const { events, finalStatus, reset: resetSSE } = useSSE(transferId)
 
@@ -158,76 +163,129 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-gray-100">
+    <div className="flex flex-col h-screen">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setTab('customer')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              tab === 'customer'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
-            }`}
-          >
-            Customer App
-          </button>
-          <button
-            onClick={() => setTab('operations')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              tab === 'operations'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
-            }`}
-          >
-            Bank Operations
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <a
-            href={temporalUi?.namespace_url || undefined}
-            target="_blank"
-            rel="noreferrer"
-            aria-disabled={!temporalUi?.namespace_url}
-            className={`text-xs px-2 py-1 rounded-full font-medium bg-purple-500/20 text-purple-300 transition-colors ${
-              temporalUi?.namespace_url
-                ? 'hover:bg-purple-500/30 hover:text-purple-100 cursor-pointer'
-                : 'cursor-default'
-            }`}
-            onClick={(event) => {
-              if (!temporalUi?.namespace_url) event.preventDefault()
-            }}
-            title={
-              temporalUi?.namespace
-                ? `Open ${temporalUi.namespace} in Temporal UI`
-                : 'Open Temporal namespace'
-            }
-          >
-            {SCENARIO_LABELS[settings.scenario] || settings.scenario}
+      <header className="site-header">
+        <div className="wrap header-inner max-w-none">
+          <a href="/" className="brand" aria-label="Home">
+            <img src="/static/temporal-logo.svg" alt="Temporal" width="129" height="33" />
+            <span className="brand-product">Money Transfer</span>
           </a>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="text-gray-400 hover:text-gray-200 text-xl transition-colors"
-            title="Demo Settings"
-          >
-            {'\u{2699}\u{FE0F}'}
-          </button>
+          <nav className="tabs" aria-label="Views">
+            <a
+              href="#customer"
+              aria-current={tab === 'customer' ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault()
+                setTab('customer')
+              }}
+            >
+              Customer App
+            </a>
+            <a
+              href="#operations"
+              aria-current={tab === 'operations' ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault()
+                setTab('operations')
+              }}
+            >
+              Bank Operations
+            </a>
+          </nav>
+          <div className="header-actions gap-3">
+            <a
+              href={temporalUi?.namespace_url || undefined}
+              target="_blank"
+              rel="noreferrer"
+              aria-disabled={!temporalUi?.namespace_url}
+              className="btn btn-secondary btn-sm"
+              onClick={(event) => {
+                if (!temporalUi?.namespace_url) event.preventDefault()
+              }}
+              title={
+                temporalUi?.namespace
+                  ? `Open ${temporalUi.namespace} in Temporal UI`
+                  : 'Open Temporal namespace'
+              }
+            >
+              <span>{SCENARIO_LABELS[settings.scenario] || settings.scenario}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+              </svg>
+            </a>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="icon-btn"
+              title="Demo Settings"
+              aria-label="Demo Settings"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" />
+                <circle cx="16" cy="6" r="2" />
+                <circle cx="10" cy="12" r="2" />
+                <circle cx="18" cy="18" r="2" />
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {tab === 'customer' ? (
-          <div className="flex-1 flex items-stretch overflow-hidden">
-            <PhoneFrame>{renderPhoneContent()}</PhoneFrame>
-            <BackstagePanel
-              events={events}
-              settings={settings}
-              finalStatus={finalStatus}
-              temporalWorkflowUrl={temporalWorkflowUrl}
+          <div ref={panesRef} className="flex-1 flex items-stretch overflow-hidden">
+            <div
+              className="h-full overflow-hidden"
+              style={{ flex: `0 1 ${panes.widths.phone}px`, minWidth: PANE_MIN.phone }}
+            >
+              <PhoneFrame>{renderPhoneContent()}</PhoneFrame>
+            </div>
+            <ResizeHandle
+              label="Resize phone panel"
+              value={panes.widths.phone}
+              onDragStart={panes.beginDrag}
+              onDrag={panes.resizePhone}
+              onReset={panes.resetPhone}
             />
-            <div className="min-w-[33vw] flex-1 flex-shrink-0 border-l border-gray-700 overflow-hidden">
+            {backstageCollapsed ? (
+              <BackstagePanel
+                events={events}
+                settings={settings}
+                finalStatus={finalStatus}
+                temporalWorkflowUrl={temporalWorkflowUrl}
+                collapsed
+                onCollapsedChange={setBackstageCollapsed}
+              />
+            ) : (
+              <>
+                <div
+                  className="h-full overflow-hidden"
+                  style={{ flex: `0 1 ${panes.widths.backstage}px`, minWidth: PANE_MIN.backstage }}
+                >
+                  <BackstagePanel
+                    events={events}
+                    settings={settings}
+                    finalStatus={finalStatus}
+                    temporalWorkflowUrl={temporalWorkflowUrl}
+                    collapsed={false}
+                    onCollapsedChange={setBackstageCollapsed}
+                  />
+                </div>
+                <ResizeHandle
+                  label="Resize Behind the Scenes panel"
+                  value={panes.widths.backstage}
+                  onDragStart={panes.beginDrag}
+                  onDrag={panes.resizeBackstage}
+                  onReset={panes.resetBackstage}
+                />
+              </>
+            )}
+            <div
+              className="h-full flex-1 overflow-hidden"
+              style={{ flexBasis: 0, minWidth: PANE_MIN.code }}
+            >
               <TemporalCodeView events={events} finalStatus={finalStatus} />
             </div>
           </div>

@@ -2,42 +2,40 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 const PHONE_W = 393
 const PHONE_H = 852
+const PADDING = 32
+const MIN_SCALE = 0.4
+const MAX_SCALE = 1
 
 export function PhoneFrame({ children }: { children: ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.75)
 
   useEffect(() => {
-    const update = () => {
-      if (!containerRef.current) return
-      const parent = containerRef.current.parentElement
-      if (!parent) return
-      const availableH = parent.clientHeight - 32
-      const s = Math.min(availableH / PHONE_H, 1)
-      setScale(Math.max(0.5, Math.min(s, 0.95)))
-    }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
+    const container = containerRef.current
+    if (!container) return
+    // Fit the phone to whichever dimension of its pane is tighter, so it
+    // rescales live as the pane is dragged wider or narrower.
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      const s = Math.min((width - PADDING) / PHONE_W, (height - PADDING) / PHONE_H)
+      setScale(Math.max(MIN_SCALE, Math.min(s, MAX_SCALE)))
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
   }, [])
 
-  const scaledW = PHONE_W * scale
-  const scaledH = PHONE_H * scale
-
   return (
-    <div
-      ref={containerRef}
-      className="flex-shrink-0 self-center flex items-center justify-center"
-      style={{ width: scaledW + 32, height: scaledH + 16 }}
-    >
-      <div
-        style={{
-          width: PHONE_W,
-          height: PHONE_H,
-          transform: `scale(${scale})`,
-          transformOrigin: 'center center',
-        }}
-      >
+    <div ref={containerRef} className="w-full h-full flex items-center justify-center overflow-hidden">
+      <div className="relative flex-shrink-0" style={{ width: PHONE_W * scale, height: PHONE_H * scale }}>
+        <div
+          className="absolute top-0 left-0"
+          style={{
+            width: PHONE_W,
+            height: PHONE_H,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+          }}
+        >
         <div className="relative w-full h-full">
           {/* Phone body */}
           <div className="absolute inset-0 rounded-[55px] bg-gradient-to-b from-[#2a2a2e] to-[#1a1a1e] shadow-[0_0_0_2px_#3a3a3e,0_20px_60px_rgba(0,0,0,0.6),0_0_0_4px_#1a1a1e]">
@@ -57,7 +55,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
               </div>
 
               {/* Screen content */}
-              <div className="w-full h-full bg-white relative">
+              <div className="w-full h-full bg-(--space-black) relative">
                 {/* Status bar */}
                 <div className="absolute top-0 left-0 right-0 h-[54px] z-20 flex items-end justify-between px-8 pb-1">
                   <span className="text-white text-sm font-semibold drop-shadow-sm">9:41</span>
@@ -82,16 +80,17 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
 
                 {/* App content */}
                 <div className="absolute inset-0 top-0 flex flex-col">
-                  <div className="h-[54px] flex-shrink-0 bg-gradient-to-r from-blue-600 to-indigo-600" />
-                  <div className="flex-1 overflow-y-auto bg-slate-50">
+                  <div className="h-[54px] flex-shrink-0 bg-(--space-black)" />
+                  <div className="flex-1 overflow-y-auto bg-(--space-black) text-(--off-white)">
                     {children}
                   </div>
                 </div>
               </div>
 
               {/* Home indicator */}
-              <div className="absolute bottom-[8px] left-1/2 -translate-x-1/2 w-[134px] h-[5px] bg-black/60 rounded-full z-30" />
+              <div className="absolute bottom-[8px] left-1/2 -translate-x-1/2 w-[134px] h-[5px] bg-white/60 rounded-full z-30" />
             </div>
+          </div>
           </div>
         </div>
       </div>

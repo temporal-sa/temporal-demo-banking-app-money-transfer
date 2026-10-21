@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Settings } from '../types'
+import { Icon } from './Icon'
 
 interface PendingTransfer {
   transfer_id: string
@@ -46,115 +47,119 @@ export function BankOperations({ settings }: BankOperationsProps) {
 
   const isHITL = settings.scenario === 'human_in_the_loop'
 
+  const decisions = Object.values(processedTransfers)
+
   return (
-    <div className="flex-1 flex flex-col bg-gray-900">
+    <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-700">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-xl">
-            {'\u{1F3E6}'}
+      <div className="page-head">
+        <div className="wrap page-head-inner">
+          <div className="page-title">
+            <h1>Bank Operations Center</h1>
+            <p>Transfer approval dashboard</p>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">Bank Operations Center</h1>
-            <p className="text-sm text-gray-400">Transfer Approval Dashboard</p>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${isHITL ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
-            <span className="text-sm text-gray-400">{isHITL ? 'Active' : 'Standby'}</span>
-          </div>
+          <dl className="stats">
+            <div>
+              <dd className={isHITL ? 'text-(--mint)' : 'text-(--gray-400)'}>
+                {isHITL ? 'Active' : 'Standby'}
+              </dd>
+              <dt>Status</dt>
+            </div>
+            <div>
+              <dd>{pendingApprovals.length}</dd>
+              <dt>Pending</dt>
+            </div>
+            <div>
+              <dd>{decisions.filter((d) => d === 'approved').length}</dd>
+              <dt>Approved</dt>
+            </div>
+            <div>
+              <dd>{decisions.filter((d) => d === 'denied').length}</dd>
+              <dt>Denied</dt>
+            </div>
+          </dl>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
-        {!isHITL ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <p className="text-5xl mb-4">{'\u{1F512}'}</p>
-            <h2 className="text-lg font-bold text-gray-300 mb-2">No Active Approvals</h2>
-            <p className="text-sm text-gray-500 max-w-md">
-              Switch to the <span className="text-purple-400 font-medium">Human-in-the-Loop</span> scenario
-              in settings to see transfers that require manual bank approval.
-            </p>
-          </div>
-        ) : pendingApprovals.length === 0 && Object.keys(processedTransfers).length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <p className="text-5xl mb-4">{'\u{23F3}'}</p>
-            <h2 className="text-lg font-bold text-gray-300 mb-2">Waiting for Transfers</h2>
-            <p className="text-sm text-gray-500 max-w-md">
-              Initiate a transfer from the Customer App tab.
-              It will appear here for approval after the withdrawal step.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4 max-w-2xl mx-auto">
-            {/* Pending approvals */}
-            {pendingApprovals.map((transfer) => (
-              <div
-                key={transfer.transfer_id}
-                className="bg-gray-800 rounded-xl p-5 border border-gray-700"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="text-xs text-gray-500 font-mono mb-1">
-                      Transfer #{transfer.transfer_id}
-                    </p>
-                    <p className="text-2xl font-bold text-white">
-                      {formatCurrency(transfer.amount)}
-                    </p>
+      <div className="catalog flex-1 overflow-y-auto">
+        <div className="wrap max-w-3xl">
+          {!isHITL ? (
+            <div className="empty">
+              <p className="text-(--off-white) mb-2">No active approvals</p>
+              <p className="normal-case font-(family-name:--font) font-light text-sm">
+                Switch to the <span className="text-(--purple)">Human-in-the-Loop</span> scenario
+                in settings to see transfers that require manual bank approval.
+              </p>
+            </div>
+          ) : pendingApprovals.length === 0 && decisions.length === 0 ? (
+            <div className="empty">
+              <p className="ws-live mb-3">Waiting for transfers</p>
+              <p className="normal-case font-(family-name:--font) font-light text-sm">
+                Initiate a transfer from the Customer App tab.
+                It will appear here for approval after the withdrawal step.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Pending approvals */}
+              {pendingApprovals.map((transfer) => (
+                <div key={transfer.transfer_id} className="panel panel-isolated">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <p className="panel-title mb-1">Transfer #{transfer.transfer_id}</p>
+                      <p className="text-3xl font-light tracking-tight">
+                        {formatCurrency(transfer.amount)}
+                      </p>
+                    </div>
+                    <span className="tag text-(--mustard) border-(--mustard) animate-pulse">
+                      Pending Approval
+                    </span>
                   </div>
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-300 animate-pulse">
-                    Pending Approval
-                  </span>
-                </div>
 
-                <div className="flex items-center gap-2 mb-4 text-sm">
-                  <span className="text-gray-400">{transfer.from_account}</span>
-                  <span className="text-gray-600">{'\u{2192}'}</span>
-                  <span className="text-gray-400">{transfer.to_account}</span>
-                </div>
+                  <div className="flex items-center gap-2 mb-5 text-sm font-(family-name:--mono) text-(--gray-200)">
+                    <span>{transfer.from_account}</span>
+                    <Icon name="arrowRight" size={14} className="text-(--gray-500)" />
+                    <span>{transfer.to_account}</span>
+                  </div>
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleApprove(transfer.transfer_id)}
-                    className="flex-1 bg-green-600 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-green-700 active:scale-[0.98] transition-all"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleDeny(transfer.transfer_id)}
-                    className="flex-1 bg-red-600 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-red-700 active:scale-[0.98] transition-all"
-                  >
-                    Deny
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleApprove(transfer.transfer_id)}
+                      className="btn btn-green flex-1"
+                    >
+                      <span>Approve</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeny(transfer.transfer_id)}
+                      className="btn btn-pink flex-1"
+                    >
+                      <span>Deny</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {/* Processed transfers */}
-            {Object.entries(processedTransfers).map(([id, decision]) => (
-              <div
-                key={id}
-                className={`rounded-xl p-4 border ${
-                  decision === 'approved'
-                    ? 'bg-green-900/20 border-green-700/50'
-                    : 'bg-red-900/20 border-red-700/50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-mono text-gray-400">Transfer #{id}</p>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      decision === 'approved'
-                        ? 'bg-green-500/20 text-green-300'
-                        : 'bg-red-500/20 text-red-300'
-                    }`}
-                  >
-                    {decision === 'approved' ? 'Approved' : 'Denied'}
-                  </span>
+              {/* Processed transfers */}
+              {decisions.length > 0 && (
+                <div className="panel">
+                  <p className="panel-title">Processed</p>
+                  {Object.entries(processedTransfers).map(([id, decision]) => (
+                    <div key={id} className="asset-row">
+                      <span className="font-(family-name:--mono) text-sm text-(--gray-200)">
+                        Transfer #{id}
+                      </span>
+                      <span className={`tag ${decision === 'approved' ? 'tag-canonical' : 'tag-hot'}`}>
+                        {decision === 'approved' ? 'Approved' : 'Denied'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -1,12 +1,10 @@
 @import "tailwindcss";
 
-body {
-  margin: 0;
-  background: #111827;
-  color: #f3f4f6;
-  font-family: system-ui, -apple-system, sans-serif;
-}
+/* Page chrome (body bg, fonts, tokens) comes from /static/brand.css.
+   Both stylesheets use the same cascade layers, so Tailwind utilities here
+   still override the brand components where needed. */
 
 #root {
+  flex: 1;
   min-height: 100vh;
 }
