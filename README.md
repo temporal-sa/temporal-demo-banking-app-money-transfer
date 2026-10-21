@@ -24,6 +24,8 @@ The script auto-detects your environment:
 
 Open http://localhost:5173 once it's running. Temporal UI at http://localhost:8233.
 
+To present the demo, follow [RUNBOOK.md](RUNBOOK.md): the walkthrough beat by beat, and where in the code each part happens.
+
 ## The Demo
 
 ### 1. Send a transfer (Happy Path)
