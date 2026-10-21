@@ -14,10 +14,10 @@ function getStepStatus(step: string, events: TransferEvent[]): StepStatus | null
 }
 
 const STEP_BG: Record<string, string> = {
-  running: 'bg-blue-500/15 border-l-2 border-blue-400',
-  completed: 'bg-green-500/8',
-  retrying: 'bg-yellow-500/15 border-l-2 border-yellow-400',
-  failed: 'bg-red-500/15 border-l-2 border-red-400',
+  running: 'bg-(--ultraviolet)/20 border-l-2 border-(--indigo-300)',
+  completed: 'bg-(--mint)/8',
+  retrying: 'bg-(--mustard)/15 border-l-2 border-(--mustard)',
+  failed: 'bg-(--coral)/15 border-l-2 border-(--coral)',
 }
 
 const KEYWORDS = new Set([
@@ -49,7 +49,7 @@ function tokenizeLine(text: string): ReactNode[] {
     // Comments
     if (text[i] === '#') {
       parts.push(
-        <span key={key++} className="text-gray-500 italic">
+        <span key={key++} className="text-(--gray-500) italic">
           {text.slice(i)}
         </span>
       )
@@ -63,7 +63,7 @@ function tokenizeLine(text: string): ReactNode[] {
       while (end < text.length && text[end] !== quote) end++
       end++ // include closing quote
       parts.push(
-        <span key={key++} className="text-green-400">
+        <span key={key++} className="text-(--pink-100)">
           {text.slice(i, end)}
         </span>
       )
@@ -76,7 +76,7 @@ function tokenizeLine(text: string): ReactNode[] {
       let end = i + 1
       while (end < text.length && /[\w.]/.test(text[end])) end++
       parts.push(
-        <span key={key++} className="text-yellow-400">
+        <span key={key++} className="text-(--mustard)">
           {text.slice(i, end)}
         </span>
       )
@@ -89,7 +89,7 @@ function tokenizeLine(text: string): ReactNode[] {
       let end = i
       while (end < text.length && /[\d.]/.test(text[end])) end++
       parts.push(
-        <span key={key++} className="text-orange-300">
+        <span key={key++} className="text-(--coral)">
           {text.slice(i, end)}
         </span>
       )
@@ -105,25 +105,25 @@ function tokenizeLine(text: string): ReactNode[] {
 
       if (KEYWORDS.has(word)) {
         parts.push(
-          <span key={key++} className={word === 'self' || word === 'True' || word === 'False' || word === 'None' ? 'text-orange-400' : 'text-purple-400'}>
+          <span key={key++} className={word === 'self' || word === 'True' || word === 'False' || word === 'None' ? 'text-(--coral)' : 'text-(--purple)'}>
             {word}
           </span>
         )
       } else if (BUILTINS.has(word)) {
         parts.push(
-          <span key={key++} className="text-blue-400">
+          <span key={key++} className="text-(--indigo-300)">
             {word}
           </span>
         )
       } else if (METHODS.has(word)) {
         parts.push(
-          <span key={key++} className="text-yellow-300">
+          <span key={key++} className="text-(--mustard)">
             {word}
           </span>
         )
       } else if (DOMAIN.has(word)) {
         parts.push(
-          <span key={key++} className="text-green-300">
+          <span key={key++} className="text-(--mint)">
             {word}
           </span>
         )
@@ -137,7 +137,7 @@ function tokenizeLine(text: string): ReactNode[] {
     // Operators and punctuation
     if ('=()[]{}:,.+-*/<>!'.includes(text[i])) {
       parts.push(
-        <span key={key++} className="text-gray-400">
+        <span key={key++} className="text-(--gray-400)">
           {text[i]}
         </span>
       )
@@ -167,33 +167,31 @@ export function TemporalCodeView({ events, finalStatus }: TemporalCodeViewProps)
   }, [showCompensation, finalStatus])
 
   return (
-    <div className="h-full flex flex-col bg-[#1a1b26]">
+    <div className="h-full flex flex-col bg-(--slab)">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-(--line) flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-bold text-gray-200 uppercase tracking-wider">
-            Workflow Code
-          </h2>
-          <p className="text-xs text-gray-500 mt-0.5">Python</p>
+          <h2 className="eyebrow">Workflow Code</h2>
+          <p className="text-xs text-(--gray-300) mt-0.5">Python</p>
         </div>
       </div>
 
       {/* Code */}
-      <div className="flex-1 overflow-y-auto p-3 font-mono text-[13px] leading-5">
+      <div className="flex-1 overflow-y-auto p-3 font-(family-name:--mono) text-[13px] leading-5">
         {allLines.map((line, i) => (
           <CodeLineRow key={i} line={line} lineNumber={i + 1} events={events} />
         ))}
 
         {/* Footer message */}
-        <div className="mt-6 px-3 py-3 border-t border-gray-700/50">
+        <div className="mt-6 px-3 py-3 border-t border-(--line)">
           {events.length === 0 ? (
-            <p className="text-xs text-gray-600 italic">
+            <p className="text-xs text-(--gray-500) italic">
               Initiate a transfer to see the code light up as each activity runs
             </p>
           ) : (
-            <div className="text-xs text-gray-500 space-y-1">
+            <div className="text-xs text-(--gray-400) space-y-1">
               <p>No message queues. No retry services. No dead letter queues.</p>
-              <p className="text-gray-400 font-medium">
+              <p className="text-(--mint) font-medium">
                 ~30 lines of code. Retries, signals, and compensation — all built in.
               </p>
             </div>
@@ -218,10 +216,10 @@ function CodeLineRow({
 
   return (
     <div className={`flex min-h-[20px] transition-colors duration-300 ${bgClass}`}>
-      <span className="w-8 flex-shrink-0 text-right pr-2 text-gray-600 select-none text-xs leading-5">
+      <span className="w-8 flex-shrink-0 text-right pr-2 text-(--gray-500) select-none text-xs leading-5">
         {lineNumber}
       </span>
-      <span className={`flex-1 ${line.isBlank ? '' : 'whitespace-pre'} text-gray-300`}>
+      <span className={`flex-1 ${line.isBlank ? '' : 'whitespace-pre'} text-(--indigo-100)`}>
         {line.isBlank ? '\u00A0' : tokenizeLine(line.text)}
       </span>
     </div>

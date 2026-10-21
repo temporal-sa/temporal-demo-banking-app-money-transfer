@@ -51,20 +51,12 @@ const SCENARIOS: {
   },
 ]
 
-const COLOR_MAP: Record<string, string> = {
-  green: 'border-green-500 bg-green-500/10',
-  blue: 'border-blue-500 bg-blue-500/10',
-  purple: 'border-purple-500 bg-purple-500/10',
-  yellow: 'border-yellow-500 bg-yellow-500/10',
-  red: 'border-red-500 bg-red-500/10',
-}
-
-const COLOR_MAP_ACTIVE: Record<string, string> = {
-  green: 'border-green-400 bg-green-500/20 ring-2 ring-green-500/30',
-  blue: 'border-blue-400 bg-blue-500/20 ring-2 ring-blue-500/30',
-  purple: 'border-purple-400 bg-purple-500/20 ring-2 ring-purple-500/30',
-  yellow: 'border-yellow-400 bg-yellow-500/20 ring-2 ring-yellow-500/30',
-  red: 'border-red-400 bg-red-500/20 ring-2 ring-red-500/30',
+const TONE: Record<string, string> = {
+  green: 'border-l-(--mint)',
+  blue: 'border-l-(--indigo-300)',
+  purple: 'border-l-(--purple)',
+  yellow: 'border-l-(--mustard)',
+  red: 'border-l-(--coral)',
 }
 
 export function SettingsModal({ open, onClose, settings, onSave }: SettingsModalProps) {
@@ -76,66 +68,67 @@ export function SettingsModal({ open, onClose, settings, onSave }: SettingsModal
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-xl p-6 w-[450px] max-h-[80vh] overflow-y-auto border border-gray-700">
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="text-lg font-bold text-white">Demo Settings</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-xl transition-colors"
-          >
-            {'\u{2715}'}
+    <div className="drawer" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div className="drawer-backdrop" onClick={onClose} />
+      <div className="drawer-panel w-[min(30rem,100%)]">
+        <div className="drawer-head">
+          <p className="eyebrow" id="settings-title">Demo Settings</p>
+          <button type="button" onClick={onClose} className="icon-btn" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
           </button>
         </div>
 
-        <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-3">
-          Transfer Scenario
-        </p>
+        <div className="drawer-body">
+          <section>
+            <p className="panel-title">Transfer Scenario</p>
+            <div className="space-y-2">
+              {SCENARIOS.map((s) => {
+                const isActive = settings.scenario === s.value
+                return (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => handleSelectScenario(s.value)}
+                    aria-pressed={isActive}
+                    className={`w-full text-left px-4 py-3 border border-l-[3px] cursor-pointer transition-colors ${TONE[s.color]} ${
+                      isActive
+                        ? 'bg-(--deep-blue) border-(--indigo-300)'
+                        : 'bg-(--deepest-blue) border-(--line) hover:bg-(--deep-blue-hover)'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-(--off-white)">{s.label}</p>
+                        <p className="text-xs text-(--indigo-100) font-light mt-0.5">{s.description}</p>
+                      </div>
+                      {isActive && <span className="tag tag-canonical">Active</span>}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
 
-        <div className="space-y-2">
-          {SCENARIOS.map((s) => {
-            const isActive = settings.scenario === s.value
-            return (
-              <button
-                key={s.value}
-                onClick={() => handleSelectScenario(s.value)}
-                className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all ${
-                  isActive ? COLOR_MAP_ACTIVE[s.color] : `${COLOR_MAP[s.color]} opacity-60 hover:opacity-90`
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {isActive && (
-                    <span className="w-2 h-2 rounded-full bg-white flex-shrink-0" />
-                  )}
-                  <div>
-                    <p className="text-sm font-semibold text-gray-200">{s.label}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{s.description}</p>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="mt-5 pt-4 border-t border-gray-700">
-          <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-3">
-            Presentation
-          </p>
-          <div className="flex gap-2">
-            {(['simple', 'detailed'] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => onSave({ ...settings, presentation_mode: mode })}
-                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  settings.presentation_mode === mode
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                {mode === 'simple' ? 'Simple' : 'Detailed'}
-              </button>
-            ))}
-          </div>
+          <section>
+            <p className="panel-title">Presentation</p>
+            <div className="flex gap-2">
+              {(['simple', 'detailed'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => onSave({ ...settings, presentation_mode: mode })}
+                  aria-pressed={settings.presentation_mode === mode}
+                  className={`btn btn-sm flex-1 ${
+                    settings.presentation_mode === mode ? 'btn-primary' : 'btn-secondary'
+                  }`}
+                >
+                  <span>{mode === 'simple' ? 'Simple' : 'Detailed'}</span>
+                </button>
+              ))}
+            </div>
+          </section>
         </div>
       </div>
     </div>

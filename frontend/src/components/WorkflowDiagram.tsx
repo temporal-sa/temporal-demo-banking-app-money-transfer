@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import type { Settings, StepStatus, TransferEvent } from '../types'
+import { Icon, type IconName } from './Icon'
 
 interface WorkflowDiagramProps {
   events: TransferEvent[]
@@ -11,21 +13,21 @@ interface StepDef {
   key: string
   label: string
   service: string
-  icon: string
+  icon: IconName
   conditionalScenario?: string
 }
 
 const WORKFLOW_STEPS: StepDef[] = [
-  { key: 'validate', label: 'Validate Transfer', service: 'Bank Service', icon: '\u{1F50D}' },
-  { key: 'withdraw', label: 'Withdraw Funds', service: 'Bank Service', icon: '\u{1F3E6}' },
-  { key: 'approval_wait', label: 'Await Approval', service: 'Signal (Human)', icon: '\u{1F464}', conditionalScenario: 'human_in_the_loop' },
-  { key: 'deposit', label: 'Deposit Funds', service: 'Bank Service', icon: '\u{1F4B0}' },
-  { key: 'send_notification_success', label: 'Send Notification', service: 'Notification', icon: '\u{1F4F1}' },
+  { key: 'validate', label: 'Validate Transfer', service: 'Bank Service', icon: 'validate' },
+  { key: 'withdraw', label: 'Withdraw Funds', service: 'Bank Service', icon: 'withdraw' },
+  { key: 'approval_wait', label: 'Await Approval', service: 'Signal (Human)', icon: 'user', conditionalScenario: 'human_in_the_loop' },
+  { key: 'deposit', label: 'Deposit Funds', service: 'Bank Service', icon: 'deposit' },
+  { key: 'send_notification_success', label: 'Send Notification', service: 'Notification', icon: 'bell' },
 ]
 
 const COMPENSATION_STEPS: StepDef[] = [
-  { key: 'undo_withdraw', label: 'Undo Withdrawal', service: 'Bank Service', icon: '\u{21A9}\u{FE0F}' },
-  { key: 'send_notification_failure', label: 'Notify Failure', service: 'Notification', icon: '\u{1F4F1}' },
+  { key: 'undo_withdraw', label: 'Undo Withdrawal', service: 'Bank Service', icon: 'undo' },
+  { key: 'send_notification_failure', label: 'Notify Failure', service: 'Notification', icon: 'bell' },
 ]
 
 function getStepState(stepKey: string, events: TransferEvent[]) {
@@ -36,24 +38,24 @@ function getStepState(stepKey: string, events: TransferEvent[]) {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'border-gray-600 bg-gray-700/50',
-  running: 'border-blue-500 bg-blue-500/10',
-  completed: 'border-green-500 bg-green-500/10',
-  failed: 'border-red-500 bg-red-500/10',
-  retrying: 'border-yellow-500 bg-yellow-500/10',
+  pending: 'border-(--line) bg-(--slab)',
+  running: 'border-(--ultraviolet) bg-(--deep-blue)',
+  completed: 'border-(--mint)/60 bg-(--slab)',
+  failed: 'border-(--coral) bg-(--slab)',
+  retrying: 'border-(--mustard) bg-(--slab)',
 }
 
 const STATUS_DOT: Record<string, string> = {
-  pending: 'bg-gray-500',
-  running: 'bg-blue-500 animate-pulse',
-  completed: 'bg-green-500',
-  failed: 'bg-red-500',
-  retrying: 'bg-yellow-500 animate-pulse',
+  pending: 'bg-(--gray-500)',
+  running: 'bg-(--ultraviolet) animate-pulse',
+  completed: 'bg-(--mint)',
+  failed: 'bg-(--coral)',
+  retrying: 'bg-(--mustard) animate-pulse',
 }
 
 const STATUS_LINE: Record<string, string> = {
-  pending: 'bg-gray-600',
-  completed: 'bg-green-500',
+  pending: 'bg-(--line-strong)',
+  completed: 'bg-(--mint)',
 }
 
 export function WorkflowDiagram({
@@ -80,11 +82,7 @@ export function WorkflowDiagram({
           target="_blank"
           rel="noreferrer"
           aria-disabled={!temporalWorkflowUrl}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30 transition-colors ${
-            temporalWorkflowUrl
-              ? 'hover:bg-purple-500/30 hover:text-purple-100 cursor-pointer'
-              : 'cursor-default'
-          }`}
+          className="btn btn-secondary btn-sm"
           onClick={(event) => {
             if (!temporalWorkflowUrl) event.preventDefault()
           }}
@@ -94,7 +92,10 @@ export function WorkflowDiagram({
               : 'Start a transfer to open the workflow'
           }
         >
-          Temporal Workflow
+          <span>Open in Temporal UI</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+          </svg>
         </a>
       </div>
 
@@ -106,32 +107,36 @@ export function WorkflowDiagram({
         return (
           <div key={step.key}>
             <div
-              className={`rounded-lg border-2 p-3 transition-all duration-300 ${STATUS_COLORS[state.status]}`}
+              className={`border p-3 transition-all duration-300 ${STATUS_COLORS[state.status]}`}
             >
               <div className="flex items-center gap-2">
                 <span
-                  className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[state.status]}`}
+                  className={`w-2 h-2 flex-shrink-0 ${STATUS_DOT[state.status]}`}
                 />
-                <span className="text-lg">{step.icon}</span>
+                <Icon name={step.icon} className="flex-shrink-0 text-(--indigo-200)" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-200">{step.label}</p>
-                  <p className="text-xs text-gray-400">{step.service}</p>
+                  <p className="text-sm font-medium text-(--off-white)">{step.label}</p>
+                  <p className="text-xs font-(family-name:--mono) uppercase text-(--gray-400)">{step.service}</p>
                 </div>
                 {step.key === 'approval_wait' && state.status === 'pending' && (
-                  <span className="text-xs text-gray-500 italic">signal</span>
+                  <span className="tag tag-isolated">signal</span>
                 )}
               </div>
+
+              {step.key === 'approval_wait' && state.status === 'running' && state.last && (
+                <ApproveAction transferId={state.last.transfer_id} />
+              )}
 
               {isDetailed && state.last && (
                 <div className="mt-2 ml-8 text-xs space-y-0.5">
                   {state.last.detail && (
-                    <p className="text-gray-300">{state.last.detail}</p>
+                    <p className="text-(--indigo-100)">{state.last.detail}</p>
                   )}
                   {state.last.error && (
-                    <p className="text-red-400 font-mono">{state.last.error}</p>
+                    <p className="text-(--coral) font-(family-name:--mono)">{state.last.error}</p>
                   )}
                   {state.last.attempt > 1 && (
-                    <p className="text-yellow-400">
+                    <p className="text-(--mustard) font-(family-name:--mono)">
                       Attempt {state.last.attempt}/{state.last.max_attempts}
                     </p>
                   )}
@@ -140,7 +145,7 @@ export function WorkflowDiagram({
 
               {state.status === 'retrying' && state.last && !isDetailed && (
                 <div className="mt-1.5 ml-8">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-yellow-500/20 text-yellow-300">
+                  <span className="tag text-(--mustard) border-(--mustard)">
                     Retry {state.last.attempt}/{state.last.max_attempts}
                   </span>
                 </div>
@@ -162,10 +167,10 @@ export function WorkflowDiagram({
       {showCompensation && (
         <>
           <div className="flex justify-center py-1">
-            <div className="w-0.5 h-4 bg-red-500" />
+            <div className="w-0.5 h-4 bg-(--coral)" />
           </div>
-          <div className="ml-4 border-l-2 border-dashed border-red-500/50 pl-3 space-y-1">
-            <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2">
+          <div className="ml-4 border-l-2 border-dashed border-(--coral)/50 pl-3 space-y-1">
+            <p className="eyebrow text-(--coral) text-xs mb-2">
               Compensation (Saga)
             </p>
             {COMPENSATION_STEPS.map((step) => {
@@ -174,20 +179,20 @@ export function WorkflowDiagram({
               return (
                 <div
                   key={step.key}
-                  className={`rounded-lg border-2 p-3 transition-all duration-300 ${STATUS_COLORS[state.status]}`}
+                  className={`border p-3 transition-all duration-300 ${STATUS_COLORS[state.status]}`}
                 >
                   <div className="flex items-center gap-2">
                     <span
-                      className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[state.status]}`}
+                      className={`w-2 h-2 flex-shrink-0 ${STATUS_DOT[state.status]}`}
                     />
-                    <span className="text-lg">{step.icon}</span>
+                    <Icon name={step.icon} className="flex-shrink-0 text-(--indigo-200)" />
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-gray-200">{step.label}</p>
-                      <p className="text-xs text-gray-400">{step.service}</p>
+                      <p className="text-sm font-medium text-(--off-white)">{step.label}</p>
+                      <p className="text-xs font-(family-name:--mono) uppercase text-(--gray-400)">{step.service}</p>
                     </div>
                   </div>
                   {isDetailed && state.last?.detail && (
-                    <p className="mt-1 ml-8 text-xs text-gray-300">{state.last.detail}</p>
+                    <p className="mt-1 ml-8 text-xs text-(--indigo-100)">{state.last.detail}</p>
                   )}
                 </div>
               )
@@ -198,20 +203,54 @@ export function WorkflowDiagram({
 
       {/* Final status banner */}
       {finalStatus === 'completed' && (
-        <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-center">
-          <p className="text-green-300 font-bold text-sm">Transfer completed successfully</p>
+        <div className="onboard-alert is-success mt-3">
+          <strong>Transfer completed successfully</strong>
         </div>
       )}
       {finalStatus === 'failed' && (
-        <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-center">
-          <p className="text-red-300 font-bold text-sm">Transfer failed</p>
+        <div className="onboard-alert is-error mt-3">
+          <strong>Transfer failed</strong>
         </div>
       )}
       {finalStatus === 'reversed' && (
-        <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center">
-          <p className="text-yellow-300 font-bold text-sm">Withdrawal reversed — funds returned</p>
+        <div className="onboard-alert is-warn mt-3">
+          <strong>Withdrawal reversed — funds returned</strong>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Sends the approval Signal from right here, so the presenter needn't switch to Bank Operations. */
+function ApproveAction({ transferId }: { transferId: string }) {
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+
+  const approve = async () => {
+    setState('sending')
+    try {
+      const res = await fetch(`/api/bank/approve/${transferId}`, { method: 'POST' })
+      setState(res.ok ? 'sent' : 'error')
+    } catch {
+      setState('error')
+    }
+  }
+
+  return (
+    <div className="mt-3 ml-8 flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        onClick={approve}
+        aria-busy={state === 'sending'}
+        aria-disabled={state === 'sending' || state === 'sent'}
+        className="btn btn-green btn-sm"
+      >
+        <span>{state === 'sent' ? 'Approval sent' : 'Approve transfer'}</span>
+      </button>
+      <span className="text-xs text-(--gray-400)">
+        {state === 'error'
+          ? 'Not ready yet — try again in a second.'
+          : 'or use the Bank Operations tab'}
+      </span>
     </div>
   )
 }

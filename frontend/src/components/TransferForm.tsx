@@ -32,9 +32,9 @@ export function TransferForm({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white -mt-0.5">
+      <div className="px-4 py-3 bg-(--space-black) border-b border-(--line)">
         <div className="flex items-center gap-2">
-          <button onClick={onBack} className="text-white/80 hover:text-white">
+          <button onClick={onBack} className="text-(--gray-300) hover:text-(--off-white) cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
               <path
                 fillRule="evenodd"
@@ -43,20 +43,20 @@ export function TransferForm({
               />
             </svg>
           </button>
-          <h1 className="text-lg font-bold">Send Money</h1>
+          <h1 className="text-xl font-light tracking-tight">Send Money</h1>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="onboard flex-1 overflow-y-auto px-4 py-4 gap-5 content-start">
         {/* From account */}
-        <div className="mb-4">
-          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">
+        <div className="onboard-field">
+          <label className="onboard-label font-(family-name:--mono) uppercase text-xs">
             From
           </label>
           <select
             value={fromAccount}
             onChange={(e) => onFromChange(e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="min-h-12 text-sm"
           >
             <option value="">Select account</option>
             {accounts
@@ -70,14 +70,14 @@ export function TransferForm({
         </div>
 
         {/* To account */}
-        <div className="mb-4">
-          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">
+        <div className="onboard-field">
+          <label className="onboard-label font-(family-name:--mono) uppercase text-xs">
             To
           </label>
           <select
             value={toAccount}
             onChange={(e) => onToChange(e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="min-h-12 text-sm"
           >
             <option value="">Select account</option>
             {accounts.map((a) => (
@@ -89,12 +89,12 @@ export function TransferForm({
         </div>
 
         {/* Amount */}
-        <div className="mb-6">
-          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">
+        <div className="onboard-field">
+          <label className="onboard-label font-(family-name:--mono) uppercase text-xs">
             Amount
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg font-medium">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-(--gray-400) text-lg font-light">
               $
             </span>
             <input
@@ -104,18 +104,19 @@ export function TransferForm({
               placeholder="0.00"
               value={amount}
               onChange={(e) => onAmountChange(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-3 py-3 text-2xl font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="min-h-14 pl-8 text-2xl font-light"
             />
           </div>
         </div>
 
         {/* Quick amounts */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2">
           {[50, 100, 250, 500].map((val) => (
             <button
               key={val}
+              type="button"
               onClick={() => onAmountChange(String(val))}
-              className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-sm font-medium hover:bg-blue-100 transition-colors"
+              className="btn btn-secondary btn-sm flex-1 px-0"
             >
               ${val}
             </button>
@@ -124,17 +125,14 @@ export function TransferForm({
       </div>
 
       {/* Bottom */}
-      <div className="p-4 bg-white border-t border-gray-100">
+      <div className="p-4 bg-(--space-black) border-t border-(--line)">
         <button
           onClick={onNext}
           disabled={!canProceed}
-          className={`w-full py-3.5 rounded-xl font-bold text-base transition-all ${
-            canProceed
-              ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-lg shadow-blue-600/20'
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-          }`}
+          aria-disabled={!canProceed}
+          className="btn btn-primary w-full"
         >
-          Review Transfer
+          <span>Review Transfer</span>
         </button>
       </div>
     </div>
