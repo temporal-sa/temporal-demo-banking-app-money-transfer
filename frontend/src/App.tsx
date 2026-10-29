@@ -9,6 +9,7 @@ import { TemporalCodeView } from './components/TemporalCodeView'
 import { TransferForm } from './components/TransferForm'
 import { TransferReview } from './components/TransferReview'
 import { TransferTracker } from './components/TransferTracker'
+import { useCodeLanguage } from './hooks/useCodeLanguage'
 import { PANE_MIN, usePaneWidths } from './hooks/usePaneWidths'
 import { useSSE } from './hooks/useSSE'
 import type {
@@ -48,6 +49,7 @@ function App() {
   const [temporalWorkflowUrl, setTemporalWorkflowUrl] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [backstageCollapsed, setBackstageCollapsed] = useState(false)
+  const [codeLanguage, setCodeLanguage] = useCodeLanguage()
   const panesRef = useRef<HTMLDivElement>(null)
   const panes = usePaneWidths(panesRef, !backstageCollapsed)
 
@@ -286,7 +288,7 @@ function App() {
               className="h-full flex-1 overflow-hidden"
               style={{ flexBasis: 0, minWidth: PANE_MIN.code }}
             >
-              <TemporalCodeView events={events} finalStatus={finalStatus} />
+              <TemporalCodeView events={events} finalStatus={finalStatus} language={codeLanguage} />
             </div>
           </div>
         ) : (
@@ -300,6 +302,8 @@ function App() {
         onClose={() => setSettingsOpen(false)}
         settings={settings}
         onSave={handleSaveSettings}
+        codeLanguage={codeLanguage}
+        onCodeLanguageChange={setCodeLanguage}
       />
     </div>
   )

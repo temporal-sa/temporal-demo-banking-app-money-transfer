@@ -1,11 +1,18 @@
-import type { Settings, TransferScenario } from '../types'
+import type { CodeLanguage, Settings, TransferScenario } from '../types'
 
 interface SettingsModalProps {
   open: boolean
   onClose: () => void
   settings: Settings
   onSave: (s: Settings) => void
+  codeLanguage: CodeLanguage
+  onCodeLanguageChange: (language: CodeLanguage) => void
 }
+
+const CODE_LANGUAGES: { value: CodeLanguage; label: string }[] = [
+  { value: 'python', label: 'Python' },
+  { value: 'go', label: 'Go' },
+]
 
 const SCENARIOS: {
   value: TransferScenario
@@ -59,7 +66,14 @@ const TONE: Record<string, string> = {
   red: 'border-l-(--coral)',
 }
 
-export function SettingsModal({ open, onClose, settings, onSave }: SettingsModalProps) {
+export function SettingsModal({
+  open,
+  onClose,
+  settings,
+  onSave,
+  codeLanguage,
+  onCodeLanguageChange,
+}: SettingsModalProps) {
   if (!open) return null
 
   const handleSelectScenario = (scenario: TransferScenario) => {
@@ -125,6 +139,25 @@ export function SettingsModal({ open, onClose, settings, onSave }: SettingsModal
                   }`}
                 >
                   <span>{mode === 'simple' ? 'Simple' : 'Detailed'}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <p className="panel-title">Code Language</p>
+            <div className="flex gap-2">
+              {CODE_LANGUAGES.map((lang) => (
+                <button
+                  key={lang.value}
+                  type="button"
+                  onClick={() => onCodeLanguageChange(lang.value)}
+                  aria-pressed={codeLanguage === lang.value}
+                  className={`btn btn-sm flex-1 ${
+                    codeLanguage === lang.value ? 'btn-primary' : 'btn-secondary'
+                  }`}
+                >
+                  <span>{lang.label}</span>
                 </button>
               ))}
             </div>
