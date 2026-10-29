@@ -12,6 +12,7 @@ interface SettingsModalProps {
 const CODE_LANGUAGES: { value: CodeLanguage; label: string }[] = [
   { value: 'python', label: 'Python' },
   { value: 'go', label: 'Go' },
+  { value: 'typescript', label: 'TypeScript' },
 ]
 
 const SCENARIOS: {

@@ -248,3 +248,113 @@ export const goCompensation: CodeLine[] = [
   },
   { text: "}", indent: 0 },
 ];
+
+export const typescriptCode: CodeLine[] = [
+  { text: "export async function accountTransferWorkflow(", indent: 0 },
+  { text: "  transfer: Transfer,", indent: 1 },
+  { text: "): Promise<void> {", indent: 0 },
+  { text: "  const compensations: Compensation[] = []", indent: 1 },
+  { text: "  try {", indent: 1 },
+  { text: "", indent: 0, isBlank: true },
+  { text: "    // Validate the transfer", indent: 2, isComment: true },
+  {
+    text: "    await proxyActivities<Activities>({",
+    indent: 2,
+    step: "validate",
+  },
+  {
+    text: "      retry: { maximumAttempts: 3 },",
+    indent: 3,
+    step: "validate",
+  },
+  { text: "    }).validate(transfer)", indent: 2, step: "validate" },
+  { text: "", indent: 0, isBlank: true },
+  {
+    text: "    // Withdraw — register compensation first",
+    indent: 2,
+    isComment: true,
+  },
+  {
+    text: "    compensations.push(undoWithdraw)",
+    indent: 2,
+    step: "withdraw",
+  },
+  {
+    text: "    await proxyActivities<Activities>({",
+    indent: 2,
+    step: "withdraw",
+  },
+  {
+    text: "      retry: { maximumAttempts: 10,",
+    indent: 3,
+    step: "withdraw",
+  },
+  {
+    text: "        backoffCoefficient: 1.5 },",
+    indent: 4,
+    step: "withdraw",
+  },
+  { text: "    }).withdraw(transfer)", indent: 2, step: "withdraw" },
+  { text: "", indent: 0, isBlank: true },
+  {
+    text: "    // Wait for approval (human in the loop)",
+    indent: 2,
+    isComment: true,
+  },
+  { text: "    await condition(", indent: 2, step: "approval_wait" },
+  { text: "      () => approved,", indent: 3, step: "approval_wait" },
+  { text: "      '30 seconds')", indent: 3, step: "approval_wait" },
+  { text: "", indent: 0, isBlank: true },
+  {
+    text: "    // Deposit — retries automatically",
+    indent: 2,
+    isComment: true,
+  },
+  {
+    text: "    await proxyActivities<Activities>({",
+    indent: 2,
+    step: "deposit",
+  },
+  {
+    text: "      retry: { maximumAttempts: 10,",
+    indent: 3,
+    step: "deposit",
+  },
+  {
+    text: "        backoffCoefficient: 1.5 },",
+    indent: 4,
+    step: "deposit",
+  },
+  { text: "    }).deposit(transfer)", indent: 2, step: "deposit" },
+  { text: "", indent: 0, isBlank: true },
+  { text: "    // Notify customer of success", indent: 2, isComment: true },
+  {
+    text: "    await sendNotification(transfer)",
+    indent: 2,
+    step: "send_notification_success",
+  },
+];
+
+export const typescriptCompensation: CodeLine[] = [
+  { text: "", indent: 0, isBlank: true },
+  {
+    text: "  // Saga: run compensations in reverse",
+    indent: 1,
+    isComment: true,
+  },
+  { text: "  } catch (err) {", indent: 1 },
+  {
+    text: "    for (const comp of compensations.reverse()) {",
+    indent: 2,
+    step: "undo_withdraw",
+  },
+  { text: "      await comp(transfer)", indent: 3, step: "undo_withdraw" },
+  { text: "    }", indent: 2, step: "undo_withdraw" },
+  {
+    text: "    await sendNotification(transfer, { fail: true })",
+    indent: 2,
+    step: "send_notification_failure",
+  },
+  { text: "  }", indent: 1 },
+  { text: "}", indent: 0 },
+];

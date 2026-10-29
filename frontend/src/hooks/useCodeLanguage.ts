@@ -6,7 +6,7 @@ const STORAGE_KEY = 'banking-demo:code-language'
 function loadLanguage(): CodeLanguage {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved === 'python' || saved === 'go') return saved
+    if (saved === 'python' || saved === 'go' || saved === 'typescript') return saved
   } catch {
     // Storage unavailable — fall back to the default.
   }

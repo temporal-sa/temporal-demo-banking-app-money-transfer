@@ -4,6 +4,8 @@ import {
   goCompensation,
   pythonCode,
   pythonCompensation,
+  typescriptCode,
+  typescriptCompensation,
   type CodeLine,
 } from '../data/workflowCode'
 import type { CodeLanguage, StepStatus, TransferEvent } from '../types'
@@ -80,6 +82,24 @@ const LANGUAGES: Record<CodeLanguage, LanguageCode> = {
       domain: new Set([
         'Validate', 'Withdraw', 'Deposit', 'SendNotification', 'UndoWithdraw',
         'compensations', 'compensate', 'comps', 'transfer', 'Transfer',
+      ]),
+    },
+  },
+  typescript: {
+    label: 'TypeScript',
+    main: typescriptCode,
+    compensation: typescriptCompensation,
+    syntax: {
+      comment: '//',
+      keywords: new Set([
+        'export', 'async', 'function', 'const', 'await', 'try', 'catch', 'for', 'of', 'void',
+      ]),
+      constants: new Set(['true', 'false', 'null', 'undefined']),
+      builtins: new Set(['Promise', 'Activities', 'Compensation', 'Transfer']),
+      methods: new Set(['proxyActivities', 'condition', 'push', 'reverse']),
+      domain: new Set([
+        'validate', 'withdraw', 'deposit', 'sendNotification', 'undoWithdraw',
+        'compensations', 'transfer', 'comp',
       ]),
     },
   },
