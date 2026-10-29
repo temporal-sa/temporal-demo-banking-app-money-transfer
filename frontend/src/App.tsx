@@ -288,7 +288,7 @@ function App() {
               className="h-full flex-1 overflow-hidden"
               style={{ flexBasis: 0, minWidth: PANE_MIN.code }}
             >
-              <TemporalCodeView events={events} finalStatus={finalStatus} language={codeLanguage} />
+              <TemporalCodeView events={events} language={codeLanguage} />
             </div>
           </div>
         ) : (

@@ -1,3 +1,4 @@
+import { workflowSnippets } from '../data/workflowCode'
 import type { CodeLanguage, Settings, TransferScenario } from '../types'
 
 interface SettingsModalProps {
@@ -9,11 +10,10 @@ interface SettingsModalProps {
   onCodeLanguageChange: (language: CodeLanguage) => void
 }
 
-const CODE_LANGUAGES: { value: CodeLanguage; label: string }[] = [
-  { value: 'python', label: 'Python' },
-  { value: 'go', label: 'Go' },
-  { value: 'typescript', label: 'TypeScript' },
-]
+const CODE_LANGUAGES = Object.entries(workflowSnippets).map(([value, snippet]) => ({
+  value: value as CodeLanguage,
+  label: snippet.label,
+}))
 
 const SCENARIOS: {
   value: TransferScenario
@@ -147,14 +147,14 @@ export function SettingsModal({
 
           <section>
             <p className="panel-title">Code Language</p>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {CODE_LANGUAGES.map((lang) => (
                 <button
                   key={lang.value}
                   type="button"
                   onClick={() => onCodeLanguageChange(lang.value)}
                   aria-pressed={codeLanguage === lang.value}
-                  className={`btn btn-sm flex-1 ${
+                  className={`btn btn-sm justify-center ${
                     codeLanguage === lang.value ? 'btn-primary' : 'btn-secondary'
                   }`}
                 >

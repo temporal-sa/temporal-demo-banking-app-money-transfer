@@ -8,7 +8,15 @@ export type TransferScenario =
 
 export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'retrying'
 export type PresentationMode = 'simple' | 'detailed'
-export type CodeLanguage = 'python' | 'go' | 'typescript'
+export type CodeLanguage =
+  | 'python'
+  | 'go'
+  | 'typescript'
+  | 'java'
+  | 'dotnet'
+  | 'ruby'
+  | 'php'
+  | 'rust'
 
 export interface Settings {
   scenario: TransferScenario

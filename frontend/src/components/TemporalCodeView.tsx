@@ -1,18 +1,9 @@
-import { type ReactNode, useMemo } from 'react'
-import {
-  goCode,
-  goCompensation,
-  pythonCode,
-  pythonCompensation,
-  typescriptCode,
-  typescriptCompensation,
-  type CodeLine,
-} from '../data/workflowCode'
+import type { ReactNode } from 'react'
+import { workflowSnippets, type CodeLine } from '../data/workflowCode'
 import type { CodeLanguage, StepStatus, TransferEvent } from '../types'
 
 interface TemporalCodeViewProps {
   events: TransferEvent[]
-  finalStatus: string | null
   language: CodeLanguage
 }
 
@@ -38,70 +29,135 @@ interface Syntax {
   domain: Set<string>
 }
 
-interface LanguageCode {
-  label: string
-  main: CodeLine[]
-  compensation: CodeLine[]
-  syntax: Syntax
-}
-
-const LANGUAGES: Record<CodeLanguage, LanguageCode> = {
+const SYNTAX: Record<CodeLanguage, Syntax> = {
   python: {
-    label: 'Python',
-    main: pythonCode,
-    compensation: pythonCompensation,
-    syntax: {
-      comment: '#',
-      keywords: new Set([
-        'class', 'async', 'def', 'await', 'for', 'in', 'try', 'except',
-        'if', 'return', 'lambda',
-      ]),
-      constants: new Set(['True', 'False', 'None', 'self']),
-      builtins: new Set(['workflow', 'activity', 'RetryPolicy', 'timedelta']),
-      methods: new Set([
-        'execute_activity', 'wait_condition', 'defn', 'run', 'signal', 'query', 'append',
-      ]),
-      domain: new Set([
-        'validate', 'withdraw', 'deposit', 'send_notification', 'undo_withdraw',
-        'compensations', 'transfer', 'comp',
-      ]),
-    },
+    comment: '#',
+    keywords: new Set([
+      'class', 'async', 'def', 'await', 'for', 'in', 'try', 'except',
+      'if', 'return', 'lambda',
+    ]),
+    constants: new Set(['True', 'False', 'None', 'self']),
+    builtins: new Set(['workflow', 'activity', 'RetryPolicy', 'timedelta']),
+    methods: new Set([
+      'execute_activity', 'wait_condition', 'defn', 'run', 'signal', 'query', 'append',
+    ]),
+    domain: new Set([
+      'validate', 'withdraw', 'deposit', 'send_notification', 'undo_withdraw',
+      'compensations', 'transfer', 'comp',
+    ]),
   },
   go: {
-    label: 'Go',
-    main: goCode,
-    compensation: goCompensation,
-    syntax: {
-      comment: '//',
-      keywords: new Set(['func', 'var', 'defer', 'if', 'for', 'return', 'any', 'bool', 'error']),
-      constants: new Set(['nil', 'true', 'false']),
-      builtins: new Set(['workflow', 'temporal', 'time', 'Context', 'RetryPolicy']),
-      methods: new Set([
-        'ExecuteActivity', 'WithRetryPolicy', 'AwaitWithTimeout', 'Get', 'append', 'len',
-      ]),
-      domain: new Set([
-        'Validate', 'Withdraw', 'Deposit', 'SendNotification', 'UndoWithdraw',
-        'compensations', 'compensate', 'comps', 'transfer', 'Transfer',
-      ]),
-    },
+    comment: '//',
+    keywords: new Set(['func', 'var', 'defer', 'if', 'for', 'return', 'any', 'bool', 'error']),
+    constants: new Set(['nil', 'true', 'false']),
+    builtins: new Set(['workflow', 'temporal', 'time', 'Context', 'RetryPolicy']),
+    methods: new Set([
+      'ExecuteActivity', 'WithRetryPolicy', 'AwaitWithTimeout', 'Get', 'append', 'len',
+    ]),
+    domain: new Set([
+      'Validate', 'Withdraw', 'Deposit', 'SendNotification', 'UndoWithdraw',
+      'compensations', 'compensate', 'comps', 'transfer', 'Transfer',
+    ]),
   },
   typescript: {
-    label: 'TypeScript',
-    main: typescriptCode,
-    compensation: typescriptCompensation,
-    syntax: {
-      comment: '//',
-      keywords: new Set([
-        'export', 'async', 'function', 'const', 'await', 'try', 'catch', 'for', 'of', 'void',
-      ]),
-      constants: new Set(['true', 'false', 'null', 'undefined']),
-      builtins: new Set(['Promise', 'Activities', 'Compensation', 'Transfer']),
-      methods: new Set(['proxyActivities', 'condition', 'push', 'reverse']),
-      domain: new Set([
-        'validate', 'withdraw', 'deposit', 'sendNotification', 'undoWithdraw',
-        'compensations', 'transfer', 'comp',
-      ]),
-    },
+    comment: '//',
+    keywords: new Set([
+      'export', 'async', 'function', 'const', 'await', 'try', 'catch', 'for', 'of', 'void',
+    ]),
+    constants: new Set(['true', 'false', 'null', 'undefined']),
+    builtins: new Set(['Promise', 'Activities', 'Compensation', 'Transfer']),
+    methods: new Set(['proxyActivities', 'condition', 'push', 'reverse']),
+    domain: new Set([
+      'validate', 'withdraw', 'deposit', 'sendNotification', 'undoWithdraw',
+      'compensations', 'transfer', 'comp',
+    ]),
+  },
+  java: {
+    comment: '//',
+    keywords: new Set([
+      'public', 'class', 'implements', 'void', 'new', 'try', 'catch', 'for',
+    ]),
+    constants: new Set(['true', 'false', 'null', 'this']),
+    builtins: new Set([
+      'Workflow', 'ActivityOptions', 'RetryOptions', 'Duration', 'ActivityFailure',
+      'Activities', 'List', 'ArrayList', 'Consumer', 'Collections', 'Transfer',
+    ]),
+    methods: new Set([
+      'newActivityStub', 'newBuilder', 'setRetryOptions', 'setMaximumAttempts',
+      'setBackoffCoefficient', 'build', 'await', 'ofSeconds', 'add', 'reverse', 'accept',
+    ]),
+    domain: new Set([
+      'validate', 'withdraw', 'deposit', 'sendNotification', 'undoWithdraw',
+      'compensations', 'transfer', 'comp', 'activities',
+    ]),
+  },
+  dotnet: {
+    comment: '//',
+    keywords: new Set([
+      'public', 'class', 'async', 'await', 'var', 'new', 'try', 'catch', 'foreach', 'in',
+    ]),
+    constants: new Set(['true', 'false', 'null', 'this']),
+    builtins: new Set([
+      'Workflow', 'WorkflowRun', 'Task', 'List', 'Func', 'TimeSpan',
+      'ActivityFailureException', 'Activities', 'Transfer',
+    ]),
+    methods: new Set([
+      'ExecuteActivityAsync', 'WaitConditionAsync', 'FromSeconds', 'Add', 'Reverse',
+      'RetryPolicy', 'MaximumAttempts', 'BackoffCoefficient',
+    ]),
+    domain: new Set([
+      'ValidateAsync', 'WithdrawAsync', 'DepositAsync', 'SendNotificationAsync',
+      'UndoWithdrawAsync', 'compensations', 'transfer', 'comp',
+    ]),
+  },
+  ruby: {
+    comment: '#',
+    keywords: new Set(['class', 'def', 'begin', 'rescue', 'do', 'end']),
+    constants: new Set(['true', 'false', 'nil', 'self']),
+    builtins: new Set(['Temporalio', 'Workflow', 'Definition', 'RetryPolicy', 'StandardError']),
+    methods: new Set(['execute_activity', 'wait_condition', 'new', 'reverse_each']),
+    domain: new Set([
+      'Validate', 'Withdraw', 'Deposit', 'SendNotification', 'UndoWithdraw',
+      'compensations', 'transfer', 'comp',
+    ]),
+  },
+  php: {
+    comment: '//',
+    keywords: new Set(['class', 'public', 'function', 'new', 'try', 'catch', 'yield', 'fn']),
+    constants: new Set(['true', 'false', 'null', 'this']),
+    builtins: new Set([
+      'Workflow', 'Saga', 'ActivityOptions', 'RetryOptions', 'AccountActivities',
+      'Transfer', 'Throwable',
+    ]),
+    methods: new Set([
+      'newActivityStub', 'withRetryOptions', 'withMaximumAttempts', 'withBackoffCoefficient',
+      'awaitWithTimeout', 'addCompensation', 'compensate',
+    ]),
+    domain: new Set([
+      'validate', 'withdraw', 'deposit', 'sendNotification', 'undoWithdraw',
+      'saga', 'transfer', 'accounts',
+    ]),
+  },
+  rust: {
+    comment: '//',
+    keywords: new Set([
+      'impl', 'pub', 'async', 'fn', 'let', 'mut', 'for', 'in', 'if', 'await', 'Self',
+    ]),
+    constants: new Set(['true', 'false', 'Ok', 'Err']),
+    builtins: new Set([
+      'WorkflowContext', 'WorkflowResult', 'Result', 'ActivityExecutionError', 'Vec',
+      'ActivityOptions', 'RetryPolicy', 'Duration', 'Activities',
+    ]),
+    methods: new Set([
+      'start_activity', 'wait_condition', 'timer', 'state', 'select', 'push', 'clone',
+      'with_start_to_close_timeout', 'start_to_close_timeout', 'retry_policy', 'builder',
+      'maximum_attempts', 'backoff_coefficient', 'build', 'from_secs', 'into_iter', 'rev',
+      'ok', 'is_err',
+    ]),
+    domain: new Set([
+      'validate', 'withdraw', 'deposit', 'send_notification', 'send_failure_notification',
+      'undo_withdraw', 'compensations', 'transfer', 'comp',
+    ]),
   },
 }
 
@@ -226,25 +282,9 @@ function tokenizeLine(text: string, syntax: Syntax): ReactNode[] {
   return parts
 }
 
-export function TemporalCodeView({ events, finalStatus, language }: TemporalCodeViewProps) {
-  const code = LANGUAGES[language]
-  const showCompensation = events.some(
-    (e) => e.step === 'undo_withdraw' || e.step === 'send_notification_failure'
-  )
-
-  const allLines = useMemo(() => {
-    const lines = [...code.main]
-    if (showCompensation || finalStatus === 'reversed' || finalStatus === 'failed') {
-      lines.push(...code.compensation)
-    }
-    return lines
-  }, [code, showCompensation, finalStatus])
-
-  // Counted over the full snippet so the figure doesn't jump when compensation appears.
-  const approxLineCount = useMemo(() => {
-    const codeLines = [...code.main, ...code.compensation].filter((line) => !line.isBlank)
-    return Math.round(codeLines.length / 10) * 10
-  }, [code])
+export function TemporalCodeView({ events, language }: TemporalCodeViewProps) {
+  const code = workflowSnippets[language]
+  const approxLineCount = Math.round(code.lines.filter((line) => !line.isBlank).length / 10) * 10
 
   return (
     <div className="h-full flex flex-col bg-(--slab)">
@@ -258,13 +298,13 @@ export function TemporalCodeView({ events, finalStatus, language }: TemporalCode
 
       {/* Code */}
       <div className="flex-1 overflow-y-auto p-3 font-(family-name:--mono) text-[13px] leading-5">
-        {allLines.map((line, i) => (
+        {code.lines.map((line, i) => (
           <CodeLineRow
             key={i}
             line={line}
             lineNumber={i + 1}
             events={events}
-            syntax={code.syntax}
+            syntax={SYNTAX[language]}
           />
         ))}
 

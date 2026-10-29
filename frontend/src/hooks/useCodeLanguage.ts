@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { workflowSnippets } from '../data/workflowCode'
 import type { CodeLanguage } from '../types'
 
 const STORAGE_KEY = 'banking-demo:code-language'
@@ -6,7 +7,7 @@ const STORAGE_KEY = 'banking-demo:code-language'
 function loadLanguage(): CodeLanguage {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved === 'python' || saved === 'go' || saved === 'typescript') return saved
+    if (saved && Object.hasOwn(workflowSnippets, saved)) return saved as CodeLanguage
   } catch {
     // Storage unavailable — fall back to the default.
   }
