@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { workflowSnippets, type CodeLine } from '../data/workflowCode'
 import type { CodeLanguage, StepStatus, TransferEvent } from '../types'
+import { PaneCollapseButton } from './PaneLayout'
 
 interface TemporalCodeViewProps {
   events: TransferEvent[]
@@ -294,6 +295,7 @@ export function TemporalCodeView({ events, language }: TemporalCodeViewProps) {
           <h2 className="eyebrow">Workflow Code</h2>
           <p className="text-xs text-(--gray-300) mt-0.5">{code.label}</p>
         </div>
+        <PaneCollapseButton />
       </div>
 
       {/* Code */}

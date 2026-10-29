@@ -1,16 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AccountsList } from './components/AccountsList'
 import { BackstagePanel } from './components/BackstagePanel'
 import { BankOperations } from './components/BankOperations'
+import { PaneCollapseButton, PaneLayout } from './components/PaneLayout'
 import { PhoneFrame } from './components/PhoneFrame'
-import { ResizeHandle } from './components/ResizeHandle'
 import { SettingsModal } from './components/SettingsModal'
 import { TemporalCodeView } from './components/TemporalCodeView'
 import { TransferForm } from './components/TransferForm'
 import { TransferReview } from './components/TransferReview'
 import { TransferTracker } from './components/TransferTracker'
 import { useCodeLanguage } from './hooks/useCodeLanguage'
-import { PANE_MIN, usePaneWidths } from './hooks/usePaneWidths'
 import { useSSE } from './hooks/useSSE'
 import type {
   Account,
@@ -48,10 +47,7 @@ function App() {
   const [temporalUi, setTemporalUi] = useState<TemporalUiInfo | null>(null)
   const [temporalWorkflowUrl, setTemporalWorkflowUrl] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [backstageCollapsed, setBackstageCollapsed] = useState(false)
   const [codeLanguage, setCodeLanguage] = useCodeLanguage()
-  const panesRef = useRef<HTMLDivElement>(null)
-  const panes = usePaneWidths(panesRef, !backstageCollapsed)
 
   const { events, finalStatus, reset: resetSSE } = useSSE(transferId)
 
@@ -237,60 +233,56 @@ function App() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {tab === 'customer' ? (
-          <div ref={panesRef} className="flex-1 flex items-stretch overflow-hidden">
-            <div
-              className="h-full overflow-hidden"
-              style={{ flex: `0 1 ${panes.widths.phone}px`, minWidth: PANE_MIN.phone }}
-            >
-              <PhoneFrame>{renderPhoneContent()}</PhoneFrame>
-            </div>
-            <ResizeHandle
-              label="Resize phone panel"
-              value={panes.widths.phone}
-              onDragStart={panes.beginDrag}
-              onDrag={panes.resizePhone}
-              onReset={panes.resetPhone}
-            />
-            {backstageCollapsed ? (
-              <BackstagePanel
-                events={events}
-                settings={settings}
-                finalStatus={finalStatus}
-                temporalWorkflowUrl={temporalWorkflowUrl}
-                collapsed
-                onCollapsedChange={setBackstageCollapsed}
-              />
-            ) : (
-              <>
-                <div
-                  className="h-full overflow-hidden"
-                  style={{ flex: `0 1 ${panes.widths.backstage}px`, minWidth: PANE_MIN.backstage }}
-                >
+          <PaneLayout
+            className="flex-1"
+            storageKey="banking-demo:panes"
+            panes={[
+              {
+                id: 'phone',
+                title: 'Customer App',
+                defaultWidth: 380,
+                minWidth: 260,
+                content: (
+                  <div className="pane-stack">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-(--line)">
+                      <div>
+                        <h2 className="eyebrow">Customer App</h2>
+                        <p className="text-xs text-(--gray-300) mt-0.5">What the customer sees</p>
+                      </div>
+                      <PaneCollapseButton />
+                    </div>
+                    <PhoneFrame
+                      chrome="var(--space-black)"
+                      background="var(--space-black)"
+                      foreground="var(--off-white)"
+                    >
+                      {renderPhoneContent()}
+                    </PhoneFrame>
+                  </div>
+                ),
+              },
+              {
+                id: 'backstage',
+                title: 'Behind the Scenes',
+                defaultWidth: 420,
+                minWidth: 260,
+                content: (
                   <BackstagePanel
                     events={events}
                     settings={settings}
                     finalStatus={finalStatus}
                     temporalWorkflowUrl={temporalWorkflowUrl}
-                    collapsed={false}
-                    onCollapsedChange={setBackstageCollapsed}
                   />
-                </div>
-                <ResizeHandle
-                  label="Resize Behind the Scenes panel"
-                  value={panes.widths.backstage}
-                  onDragStart={panes.beginDrag}
-                  onDrag={panes.resizeBackstage}
-                  onReset={panes.resetBackstage}
-                />
-              </>
-            )}
-            <div
-              className="h-full flex-1 overflow-hidden"
-              style={{ flexBasis: 0, minWidth: PANE_MIN.code }}
-            >
-              <TemporalCodeView events={events} language={codeLanguage} />
-            </div>
-          </div>
+                ),
+              },
+              {
+                id: 'code',
+                title: 'Workflow Code',
+                minWidth: 320,
+                content: <TemporalCodeView events={events} language={codeLanguage} />,
+              },
+            ]}
+          />
         ) : (
           <BankOperations settings={settings} />
         )}

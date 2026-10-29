@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./kit.css";
 
 /* Page chrome (body bg, fonts, tokens) comes from /static/brand.css.
    Both stylesheets use the same cascade layers, so Tailwind utilities here
