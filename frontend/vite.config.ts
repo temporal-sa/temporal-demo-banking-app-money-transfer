@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8000',
+      // `make dev` runs this in a container, where the API is the backend service.
+      '/api': process.env.API_PROXY_TARGET ?? 'http://localhost:8000',
     },
   },
 })

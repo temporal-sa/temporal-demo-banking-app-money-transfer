@@ -6,23 +6,19 @@ A live, interactive demo showing how [Temporal](https://temporal.io) handles mon
 
 ## Quick Start
 
-**Prerequisites:** [Temporal CLI](https://docs.temporal.io/cli) + either Docker or ([uv](https://docs.astral.sh/uv/) + [Node.js](https://nodejs.org/))
+**Prerequisites:** Docker with Compose, and `make`. Everything else, including the Temporal dev server, runs in containers.
 
 ```bash
-./scripts/start.sh                              # Local Temporal dev server
-./scripts/start.sh --encrypt                    # Local + payload encryption
-./scripts/start.sh --cloud-env cloud.env        # Temporal Cloud
-./scripts/start.sh --cloud-env cloud.env --encrypt  # Cloud + encryption
+make demo                                  # Local Temporal dev server
+make demo ENCRYPT=1                        # Local + payload encryption
+make demo CLOUD_ENV=cloud.env              # Temporal Cloud
+make demo CLOUD_ENV=cloud.env ENCRYPT=1    # Cloud + encryption
+make down                                  # Stop it
 ```
 
-The script auto-detects your environment:
+Open http://localhost:5173 once it's running. Temporal UI at http://localhost:8233. `make help` lists the other targets: `dev` for an edit loop with reload, `worker` to rebuild the Worker alone, `reset` to terminate running transfers and clear the API's state, `test`, and `logs`.
 
-| Has Docker? | What happens |
-|---|---|
-| Yes | Temporal CLI on host, backend/worker/frontend in containers |
-| No | Everything runs locally as background processes |
-
-Open http://localhost:5173 once it's running. Temporal UI at http://localhost:8233.
+`./scripts/start.sh` (with `--encrypt` and `--cloud-env <path>`) still works for running without Docker. It needs the [Temporal CLI](https://docs.temporal.io/cli), [uv](https://docs.astral.sh/uv/) and [Node.js](https://nodejs.org/) on the host.
 
 To present the demo, follow [RUNBOOK.md](RUNBOOK.md): the walkthrough beat by beat, and where in the code each part happens.
 
@@ -55,10 +51,10 @@ The Temporal UI at http://localhost:8233 shows actual workflow executions with f
 
 ## Payload Encryption
 
-Launch with `--encrypt` to enable AES-GCM encryption on all workflow and activity payloads:
+Launch with `ENCRYPT=1` to enable AES-GCM encryption on all workflow and activity payloads:
 
 ```bash
-./scripts/start.sh --encrypt
+make demo ENCRYPT=1
 ```
 
 This starts the worker with an encryption codec and a codec server on http://localhost:8081. The worker encrypts all payloads before they reach the Temporal server and decrypts them when they come back — the Temporal server never sees plaintext data.
@@ -77,7 +73,7 @@ To connect to Temporal Cloud instead of a local dev server:
 ```bash
 cp cloud.env.example cloud.env
 # Edit cloud.env with your namespace, address, and auth credentials
-./scripts/start.sh --cloud-env cloud.env
+make demo CLOUD_ENV=cloud.env
 ```
 
 The env file supports two authentication methods:
@@ -87,7 +83,7 @@ The env file supports two authentication methods:
 | **API Key** (preferred) | `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, `TEMPORAL_API_KEY` |
 | **mTLS certificates** | `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, `TEMPORAL_CERT_PATH`, `TEMPORAL_KEY_PATH` |
 
-When using `--cloud-env`, no local Temporal server is started. The worker and backend connect directly to your Cloud namespace. Combine with `--encrypt` for encrypted payloads on Cloud.
+With `CLOUD_ENV`, no local Temporal server is started. The worker and backend connect directly to your Cloud namespace. Combine with `ENCRYPT=1` for encrypted payloads on Cloud.
 
 ## AWS Lambda Worker Container
 
@@ -131,14 +127,14 @@ FastAPI Backend (Python)
     |-- Internal API (failure state, SSE events, approvals)
     +-- Temporal client (starts workflows, sends signals)
            |
-Temporal Dev Server (CLI, on host)
+Temporal Dev Server (container, local profile)
            |
-Python Worker [encrypts/decrypts payloads when --encrypt]
+Python Worker [encrypts/decrypts payloads when ENCRYPT=1]
     |-- AccountTransferWorkflow (happy path)
     |-- AccountTransferWorkflowScenarios (dynamic, 5 other scenarios)
     +-- Activities -> Backend internal API
 
-Codec Server (optional, --encrypt only)
+Codec Server (optional, ENCRYPT=1 only)
     |-- POST /encode — encrypts payloads
     +-- POST /decode — decrypts payloads for Temporal UI
 ```
@@ -165,14 +161,25 @@ Two workflow classes:
 ├── backend/               # FastAPI + mock bank services (Python)
 ├── workflows/python/      # Python worker — two workflow classes + activities
 │   └── src/banking_workflows/
-│       ├── codec.py           # AES-GCM PayloadCodec (used when --encrypt)
+│       ├── codec.py           # AES-GCM PayloadCodec (used when ENCRYPT=1)
 │       └── codec_server.py    # HTTP codec server for Temporal UI decryption
-├── docker/                # Dockerfiles + nginx config
-├── docker-compose.yml     # Backend, worker, frontend + codec-server (encrypt profile)
-└── scripts/start.sh       # One-command launcher
+├── docker/                # Dockerfiles (with test stages) + nginx config
+├── docker-compose.yml     # Dev server (local profile), backend, worker, frontend, codec-server (encrypt profile)
+├── docker-compose.dev.yml # Source mounts for make dev
+├── Makefile               # make help lists the targets
+└── scripts/start.sh       # Launcher for running without Docker
 ```
 
 ## Development
+
+```bash
+make dev     # The stack with source mounts: the API and frontend reload on save
+make test    # Ruff on the Python packages; type-check, ESLint and build the frontend
+```
+
+The Worker doesn't reload in `make dev`. Restart it after an edit with `docker compose restart worker-python`.
+
+### Without Docker
 
 ```bash
 # Install dependencies

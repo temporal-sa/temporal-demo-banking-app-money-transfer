@@ -1,0 +1,30 @@
+# Edit loop for `make dev`: source mounts over docker-compose.yml.
+# The API reloads on save and the frontend runs the Vite dev server with hot reload.
+# The Worker doesn't reload; restart it after an edit with `docker compose restart worker-python`.
+
+services:
+  backend:
+    environment:
+      - BANKING_RELOAD=1
+    volumes:
+      - ./backend/src:/app/backend/src
+      - ./workflows/python/src:/app/workflows/python/src
+
+  worker-python:
+    volumes:
+      - ./backend/src:/app/backend/src
+      - ./workflows/python/src:/app/workflows/python/src
+
+  frontend:
+    build: !reset null
+    image: node:22-slim
+    working_dir: /app
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0 --port 5173"]
+    environment:
+      - API_PROXY_TARGET=http://backend:8000
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+volumes:
+  frontend_node_modules:

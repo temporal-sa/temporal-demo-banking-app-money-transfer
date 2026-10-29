@@ -15,13 +15,13 @@ The demo makes four problems visible:
 
 ## Before you start
 
-- Install the [Temporal CLI](https://docs.temporal.io/cli), and either Docker or both [uv](https://docs.astral.sh/uv/) and [Node.js](https://nodejs.org/). `scripts/start.sh` uses Docker when it finds it, and otherwise runs everything as local processes.
-- Clone the repo. The first start builds the containers, or installs the Python and Node dependencies.
-- Locally, the demo uses ports 7233 and 8233 (Temporal), 8000 (API) and 5173 (app), plus 8081 with `--encrypt`.
+- Install Docker with Compose, and `make`. The Temporal dev server and every service run in containers. To run without Docker, `scripts/start.sh` runs everything as local processes instead; it needs the [Temporal CLI](https://docs.temporal.io/cli), [uv](https://docs.astral.sh/uv/) and [Node.js](https://nodejs.org/).
+- Clone the repo. The first start builds the containers.
+- Locally, the demo uses ports 7233 and 8233 (Temporal), 8000 (API) and 5173 (app), plus 8081 with `ENCRYPT=1`.
 - To run against Temporal Cloud instead of the local dev server:
   1. Copy `cloud.env.example` to `cloud.env` and set `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, and either `TEMPORAL_API_KEY` or `TEMPORAL_CERT_PATH` and `TEMPORAL_KEY_PATH`.
-  2. Add the Search Attribute `Step` (Keyword) to the Namespace if you'll run **Advanced Visibility**. `scripts/start.sh` registers it only on the local dev server.
-  3. Start with `./scripts/start.sh --cloud-env cloud.env`.
+  2. Add the Search Attribute `Step` (Keyword) to the Namespace if you'll run **Advanced Visibility**. The local dev server registers it at start; a Cloud Namespace doesn't have it until you add it.
+  3. Start with `make demo CLOUD_ENV=cloud.env`.
 
 ### On tmprl-demo.cloud
 
@@ -34,11 +34,11 @@ The deployment is shared. The scenario lives in the API's memory, and changing i
 From the repository root:
 
 ```bash
-./scripts/start.sh             # local dev server
-./scripts/start.sh --encrypt   # local, with payload encryption and a codec server
+make demo             # local dev server
+make demo ENCRYPT=1   # local, with payload encryption and a codec server
 ```
 
-The script prints a banner with the URLs when everything is up. Press `Ctrl-C` in that terminal to stop everything.
+`make demo` returns once every service is up and prints the URLs. Stop everything with `make down`.
 
 Open http://localhost:5173. A healthy start shows the **Customer app** tab with a phone on **My Accounts** and a total balance of $180,000.00, **Scenario: Happy Path** and **Temporal UI** buttons in the top-right corner, a **Behind the scenes** panel that reads "Start a transfer to see what happens behind the scenes", and the **Workflow code** panel. The Temporal UI is at http://localhost:8233.
 
@@ -114,7 +114,7 @@ This beat needs a local run, because you edit the Workflow code and restart the 
 4. Say: "That's a bug in our Workflow code, not an outage. Temporal doesn't fail the transfer or lose the withdrawal. It holds the Workflow where it is and keeps retrying until there's code that works."
 5. In `workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py`, comment out line 107, `raise RuntimeError("Simulated bug - fix me!")`.
 6. Restart the Worker with the fix:
-   - With Docker: `docker compose up -d --build worker-python` from the repository root.
+   - With Docker: `make worker` from the repository root.
    - Without Docker: `scripts/start.sh` runs everything in one terminal, so for this beat start the services one by one as in the README's [Development](README.md#development) section, then stop the Worker with `Ctrl-C` and start it again.
 7. On the next Workflow Task retry, the transfer continues from after the withdrawal: deposit, then notification. The retries back off, so it can take several seconds. The phone ends on **Transfer complete**.
 8. Say: "We fixed the code and restarted the Worker. The transfer picked up after the withdrawal it had already done, and didn't withdraw twice."
@@ -134,7 +134,7 @@ The `Step` Search Attribute has to exist on the Namespace. If it doesn't, this t
 
 ### 7. Keep the payloads encrypted (optional, local)
 
-1. Start with `./scripts/start.sh --encrypt` and send any transfer.
+1. Start with `make demo ENCRYPT=1` and send any transfer. The codec server takes a few seconds longer than the rest to answer.
 2. In the Temporal UI, open the execution. The Activity inputs and results show encoding `binary/encrypted` instead of account numbers and amounts. The Workflow's own start input is still readable, because the API starts the Workflow without the codec; see [the encryption entry](#encrypt-payloads-before-they-leave-the-worker).
 3. On **Workflows**, select **Configure Codec Server** in the top-right corner and set the endpoint to `http://localhost:8081`. The payloads now show in clear text.
 4. Say: "The Worker encrypts everything before it leaves the process. Temporal stores and shows ciphertext. Your browser decrypts it through a codec server you run, so the plaintext never goes through Temporal."
@@ -322,7 +322,7 @@ if self.BUG == self.workflow_type:
 
 **When to use it:** during beat 6, or when someone asks how operations would find stuck transfers.
 
-**Where it is:** [`workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py` line 29](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py#L29) and [lines 165–168](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py#L165-L168) (`code -g workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py:165`); the attribute is created in [`scripts/start.sh` line 123](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/scripts/start.sh#L123)
+**Where it is:** [`workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py` line 29](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py#L29) and [lines 165–168](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py#L165-L168) (`code -g workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py:165`); the attribute is created by the `temporal` service's `--search-attribute Step=Keyword` flag in `docker-compose.yml`, or without Docker in [`scripts/start.sh` line 123](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/scripts/start.sh#L123)
 
 ```python
 WORKFLOW_STEP = SearchAttributeKey.for_keyword("Step")
@@ -402,20 +402,20 @@ When someone asks what they'd change for their own system, these are the parts t
 
 - **Between transfers:** press **New transfer** on the phone. If a transfer never finishes on screen (beat 4 after a timeout, beat 5 before the fix), reload the page.
 - **Between scenarios:** picking a scenario in **Demo settings** clears the API's in-memory transfers and pending approvals. Workflows that are still running keep running.
-- **Close what's still open:** a **Bug in Workflow** transfer stays **Running** until the fix is deployed or you terminate it. Terminate it with `temporal workflow terminate --workflow-id transfer-<id>`, or from its page in the Temporal UI. On Temporal Cloud, do this before you leave; the Workflow Task keeps retrying until you do. A **Human-in-the-Loop** transfer ends on its own after 30 seconds.
-- **To stop:** press `Ctrl-C` in the `scripts/start.sh` terminal. It stops the containers or local processes and the dev server. Each start uses a fresh dev server database, so nothing carries over.
+- **Close what's still open:** a **Bug in Workflow** transfer stays **Running** until the fix is deployed or you terminate it. Locally, `make reset` terminates every running transfer and clears the API's state, which also sets the scenario back to **Happy Path**. Otherwise terminate it from its page in the Temporal UI. On Temporal Cloud, do this before you leave; the Workflow Task keeps retrying until you do. A **Human-in-the-Loop** transfer ends on its own after 30 seconds.
+- **To stop:** run `make down`. It removes the containers, including the dev server, which keeps its data in memory, so nothing carries over to the next start. With `scripts/start.sh`, press `Ctrl-C` in its terminal instead.
 
 ## When something goes wrong
 
 | What you see | Likely cause | Fix |
 |---|---|---|
 | The phone stays on "Processing transfer…" and **Behind the scenes** stays empty | The Worker isn't running, or it polls a different Task Queue from the one the API starts on | Check the Worker's logs. Both read `TEMPORAL_TASK_QUEUE` and default to `MoneyTransfer` |
-| An **Advanced Visibility** transfer stalls before **Validate Transfer** | The `Step` Search Attribute doesn't exist on the Namespace | Locally: `temporal operator search-attribute create --name Step --type Keyword`. On Cloud, add it to the Namespace |
+| An **Advanced Visibility** transfer stalls before **Validate Transfer** | The `Step` Search Attribute doesn't exist on the Namespace | Locally, `make down` and `make demo` again; the dev server registers it at start. On Cloud, add it to the Namespace |
 | After **Human-in-the-Loop**, the phone stays on "Processing transfer…" with no **New transfer** button, and **Await approval** is red | Nobody approved within 30 seconds, or someone pressed **Deny**; the Workflow failed with `ApprovalTimeout` | Expected in this code. Reload the page, and approve faster next time |
 | **Approve** does nothing, or the card is already gone | The 30 seconds had passed, or someone pressed **Deny** | Send a new transfer |
-| The **Bug in Workflow** transfer doesn't resume after the fix | The Worker is still running the old code | With Docker, rebuild: `docker compose up -d --build worker-python`. Otherwise restart the Worker process |
+| The **Bug in Workflow** transfer doesn't resume after the fix | The Worker is still running the old code | With Docker, rebuild it: `make worker`. Otherwise restart the Worker process |
 | The screen resets in the middle of a beat on tmprl-demo.cloud | Someone else changed the scenario on the shared deployment | Send the transfer again |
-| Payloads stay `binary/encrypted` after setting the codec endpoint | The codec server isn't running, or the browser blocked it | Start with `--encrypt`, which runs it on port 8081, and check the browser console |
+| Payloads stay `binary/encrypted` after setting the codec endpoint | The codec server isn't running, or the browser blocked it | Start with `make demo ENCRYPT=1`, which runs it on port 8081, give it a few seconds, and check the browser console |
 
 ## Keeping this runbook current
 

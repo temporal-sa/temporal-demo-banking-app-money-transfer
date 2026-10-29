@@ -1,10 +1,26 @@
-# Temporal dev server runs locally via CLI (not containerized).
+# The Makefile wraps these; see `make help`.
 #
-# Local:       docker compose up --build
-# Encryption:  BANKING_ENCRYPT=1 docker compose --profile encrypt up --build
-# Cloud:       Set TEMPORAL_ADDRESS, TEMPORAL_NAMESPACE, and auth env vars
+# Local:       docker compose --profile local up --build
+# Encryption:  BANKING_ENCRYPT=1 docker compose --profile local --profile encrypt up --build
+# Cloud:       docker compose --env-file cloud.env up --build (no local profile, so no dev server)
 
 services:
+  # -- Temporal dev server (local profile only) --
+  temporal:
+    image: temporalio/temporal:1.9.1
+    command: ["--disable-config-file", "server", "start-dev", "--ip", "0.0.0.0", "--log-level", "warn", "--search-attribute", "Step=Keyword"]
+    ports:
+      - "7233:7233"
+      - "8233:8233"
+    healthcheck:
+      test: ["CMD", "temporal", "--disable-config-file", "operator", "cluster", "health", "--address", "localhost:7233"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+    profiles:
+      - local
+
   # -- Backend API (FastAPI) --
   backend:
     build:
@@ -24,6 +40,10 @@ services:
       - ${TEMPORAL_KEY_PATH:-/dev/null}:/certs/client.key:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      temporal:
+        condition: service_healthy
+        required: false
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 2s
@@ -51,6 +71,9 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
+      temporal:
+        condition: service_healthy
+        required: false
       backend:
         condition: service_healthy
 

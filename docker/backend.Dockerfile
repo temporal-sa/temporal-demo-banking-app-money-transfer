@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.13-slim AS base
 
 WORKDIR /app
 
@@ -9,6 +9,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock ./
 COPY backend/ backend/
 COPY workflows/python/ workflows/python/
+
+# Lints every Python package in the workspace: `make test`
+FROM base AS test
+RUN uv sync --frozen --all-packages && uv run --frozen ruff check .
+
+FROM base
 
 # Install dependencies
 RUN uv sync --frozen --no-dev
