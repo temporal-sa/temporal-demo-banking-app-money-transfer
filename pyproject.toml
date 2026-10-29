@@ -11,4 +11,5 @@ dev = [
     "ruff",
     "pytest",
     "pytest-asyncio",
+    "httpx>=0.28.1",
 ]

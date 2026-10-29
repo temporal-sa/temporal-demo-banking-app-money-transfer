@@ -69,8 +69,7 @@ class Transfer(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
 
 
-class TransferEvent(BaseModel):
-    transfer_id: str
+class StepUpdate(BaseModel):
     step: str
     status: StepStatus
     attempt: int = 1
@@ -78,3 +77,15 @@ class TransferEvent(BaseModel):
     error: str | None = None
     detail: str = ""
     timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class TransferEvent(StepUpdate):
+    """A step update as the browser receives it."""
+
+    transfer_id: str
+
+
+class WorkerEvent(StepUpdate):
+    """A step update as an Activity reports it, by Workflow ID."""
+
+    workflow_id: str

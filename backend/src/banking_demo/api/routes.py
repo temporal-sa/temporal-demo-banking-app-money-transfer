@@ -1,23 +1,25 @@
 from __future__ import annotations
 
-import asyncio
 import os
+from typing import Annotated
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 
-from banking_demo import config
-from banking_demo.api.events import emit_event, event_generator
+from banking_demo import config, sessions
+from banking_demo.api.events import event_generator, publish
 from banking_demo.models import (
     SCENARIO_TO_WORKFLOW_TYPE,
     Settings,
     StepStatus,
+    StepUpdate,
     Transfer,
-    TransferEvent,
     TransferRequest,
+    WorkerEvent,
 )
+from banking_demo.sessions import Session, TransferRecord
 from banking_demo.temporal_ui import (
     temporal_namespace,
     temporal_namespace_url,
@@ -69,6 +71,38 @@ async def get_temporal_client():
 
 
 # ---------------------------------------------------------------------------
+# Browser sessions
+# ---------------------------------------------------------------------------
+
+SESSION_COOKIE = "banking_session"
+
+
+def current_session(request: Request, response: Response) -> Session:
+    """The caller's session, set as a cookie with no expiry so it ends with the browser session."""
+    sent = request.cookies.get(SESSION_COOKIE)
+    session = sessions.resume_or_start(sent)
+    if sent != session.id:
+        response.set_cookie(
+            SESSION_COOKIE,
+            session.id,
+            httponly=True,
+            samesite="lax",
+            secure=request.headers.get("x-forwarded-proto") == "https",
+        )
+    return session
+
+
+CurrentSession = Annotated[Session, Depends(current_session)]
+
+
+def session_transfer(session: Session, transfer_id: str) -> TransferRecord:
+    record = session.transfers.get(transfer_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Transfer not found")
+    return record
+
+
+# ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
 
@@ -103,16 +137,15 @@ async def get_accounts():
 
 
 @app.get("/api/settings")
-async def get_settings():
-    return config.settings.model_dump()
+async def get_settings(session: CurrentSession):
+    return session.settings.model_dump()
 
 
 @app.post("/api/settings")
-async def update_settings(new_settings: Settings):
-    config.settings.scenario = new_settings.scenario
-    config.settings.presentation_mode = new_settings.presentation_mode
-    config.reset_state()
-    return config.settings.model_dump()
+async def update_settings(new_settings: Settings, session: CurrentSession):
+    session.settings = new_settings
+    sessions.clear(session)
+    return session.settings.model_dump()
 
 
 # ---------------------------------------------------------------------------
@@ -121,23 +154,26 @@ async def update_settings(new_settings: Settings):
 
 
 @app.post("/api/transfers")
-async def create_transfer(request: TransferRequest):
+async def create_transfer(request: TransferRequest, session: CurrentSession):
     transfer_id = uuid4().hex[:8]
-    workflow_type = SCENARIO_TO_WORKFLOW_TYPE[config.settings.scenario]
+    scenario = session.settings.scenario
+    workflow_type = SCENARIO_TO_WORKFLOW_TYPE[scenario]
+    task_queue = os.environ.get("TEMPORAL_TASK_QUEUE") or "MoneyTransfer"
 
     transfer = Transfer(
         transfer_id=transfer_id,
         from_account=request.from_account,
         to_account=request.to_account,
         amount=request.amount,
-        scenario=config.settings.scenario,
+        scenario=scenario,
         workflow_type=workflow_type,
     )
-    config.transfers[transfer_id] = transfer.model_dump(mode="json")
-    config.event_queues[transfer_id] = asyncio.Queue()
+    # Crashable workspaces share a Namespace and differ only by task queue, and
+    # browser sessions share a workspace, so the ID carries both.
+    workflow_id = f"transfer-{task_queue}-{session.tag}-{transfer_id}"
+    sessions.add_transfer(session, transfer, workflow_id)
 
     client = await get_temporal_client()
-    workflow_id = f"transfer-{transfer_id}"
     handle = await client.start_workflow(
         workflow_type,
         {
@@ -146,7 +182,7 @@ async def create_transfer(request: TransferRequest):
             "toAccount": request.to_account,
         },
         id=workflow_id,
-        task_queue=os.environ.get("TEMPORAL_TASK_QUEUE") or "MoneyTransfer",
+        task_queue=task_queue,
     )
     run_id = handle.first_execution_run_id or handle.run_id or ""
 
@@ -163,18 +199,13 @@ async def create_transfer(request: TransferRequest):
 
 
 @app.get("/api/transfers/{transfer_id}")
-async def get_transfer(transfer_id: str):
-    transfer = config.transfers.get(transfer_id)
-    if not transfer:
-        raise HTTPException(status_code=404, detail="Transfer not found")
-    return transfer
+async def get_transfer(transfer_id: str, session: CurrentSession):
+    return session_transfer(session, transfer_id).transfer.model_dump(mode="json")
 
 
 @app.get("/api/transfers/{transfer_id}/events")
-async def transfer_events(transfer_id: str):
-    if transfer_id not in config.event_queues:
-        raise HTTPException(status_code=404, detail="Transfer not found")
-    return EventSourceResponse(event_generator(transfer_id))
+async def transfer_events(transfer_id: str, session: CurrentSession):
+    return EventSourceResponse(event_generator(session_transfer(session, transfer_id)))
 
 
 # ---------------------------------------------------------------------------
@@ -183,85 +214,92 @@ async def transfer_events(transfer_id: str):
 
 
 @app.get("/api/bank/pending-approvals")
-async def get_pending_approvals():
-    return list(config.pending_approvals.values())
+async def get_pending_approvals(session: CurrentSession):
+    return [
+        {"transfer_id": transfer_id, **record.pending_approval}
+        for transfer_id, record in session.transfers.items()
+        if record.pending_approval is not None
+    ]
+
+
+def pending_transfer(session: Session, transfer_id: str) -> TransferRecord:
+    record = session.transfers.get(transfer_id)
+    if record is None or record.pending_approval is None:
+        raise HTTPException(status_code=404, detail="No pending approval for this transfer")
+    return record
 
 
 @app.post("/api/bank/approve/{transfer_id}")
-async def approve_transfer(transfer_id: str):
-    if transfer_id not in config.pending_approvals:
-        raise HTTPException(status_code=404, detail="No pending approval for this transfer")
+async def approve_transfer(transfer_id: str, session: CurrentSession):
+    record = pending_transfer(session, transfer_id)
 
     client = await get_temporal_client()
-    handle = client.get_workflow_handle(f"transfer-{transfer_id}")
-    await handle.signal("approveTransfer")
+    await client.get_workflow_handle(record.workflow_id).signal("approveTransfer")
 
-    config.pending_approvals.pop(transfer_id, None)
+    record.pending_approval = None
 
-    await emit_event(
-        transfer_id,
-        "approval_wait",
-        StepStatus.COMPLETED,
-        detail="Transfer approved by bank operations",
+    await publish(
+        record,
+        StepUpdate(
+            step="approval_wait",
+            status=StepStatus.COMPLETED,
+            detail="Transfer approved by bank operations",
+        ),
     )
 
     return {"status": "approved", "transfer_id": transfer_id}
 
 
 @app.post("/api/bank/deny/{transfer_id}")
-async def deny_transfer(transfer_id: str):
+async def deny_transfer(transfer_id: str, session: CurrentSession):
     """Remove from pending approvals — workflow will timeout and compensate."""
-    if transfer_id not in config.pending_approvals:
-        raise HTTPException(status_code=404, detail="No pending approval for this transfer")
+    record = pending_transfer(session, transfer_id)
+    record.pending_approval = None
 
-    config.pending_approvals.pop(transfer_id, None)
-
-    await emit_event(
-        transfer_id,
-        "approval_wait",
-        StepStatus.FAILED,
-        detail="Transfer denied — will timeout and compensate",
+    await publish(
+        record,
+        StepUpdate(
+            step="approval_wait",
+            status=StepStatus.FAILED,
+            detail="Transfer denied — will timeout and compensate",
+        ),
     )
 
     return {"status": "denied", "transfer_id": transfer_id}
 
 
 # ---------------------------------------------------------------------------
-# Internal: used by external worker process
+# Internal: used by the Worker. Activities identify their transfer by Workflow ID.
+# The frontend's proxy doesn't forward these paths, so browsers can't reach them.
 # ---------------------------------------------------------------------------
 
 
 @app.post("/api/internal/events")
-async def push_event(event: TransferEvent):
-    """Accept SSE events from an external worker process."""
-    queue = config.event_queues.get(event.transfer_id)
-    if queue is None:
-        if event.transfer_id in config.transfers:
-            config.event_queues[event.transfer_id] = asyncio.Queue()
-            queue = config.event_queues[event.transfer_id]
-        else:
-            return {"status": "ignored", "reason": "unknown transfer"}
-    await queue.put(event.model_dump(mode="json"))
+async def push_event(event: WorkerEvent):
+    """Accept a step update from an Activity."""
+    record = sessions.transfer_for_workflow(event.workflow_id)
+    if record is None:
+        return {"status": "ignored", "reason": "unknown transfer"}
+    await publish(record, event)
     return {"status": "accepted"}
 
 
-@app.get("/api/internal/should-fail-deposit/{transfer_id}")
-async def check_should_fail_deposit(transfer_id: str):
-    """Check if deposit should fail for API Downtime scenario."""
-    return {"should_fail": config.should_fail_deposit(transfer_id)}
-
-
-@app.post("/api/internal/pending-approvals/{transfer_id}")
-async def register_pending_approval(transfer_id: str, payload: dict):
+@app.post("/api/internal/pending-approvals/{workflow_id}")
+async def register_pending_approval(workflow_id: str, payload: dict):
     """Register a transfer as needing approval (from worker)."""
-    config.pending_approvals[transfer_id] = payload
+    record = sessions.transfer_for_workflow(workflow_id)
+    if record is None:
+        return {"status": "ignored", "reason": "unknown transfer"}
+    record.pending_approval = payload
     return {"status": "accepted"}
 
 
-@app.delete("/api/internal/pending-approvals/{transfer_id}")
-async def remove_pending_approval(transfer_id: str):
+@app.delete("/api/internal/pending-approvals/{workflow_id}")
+async def remove_pending_approval(workflow_id: str):
     """Remove a pending approval (from worker)."""
-    config.pending_approvals.pop(transfer_id, None)
+    record = sessions.transfer_for_workflow(workflow_id)
+    if record is not None:
+        record.pending_approval = None
     return {"status": "removed"}
 
 
@@ -271,6 +309,6 @@ async def remove_pending_approval(transfer_id: str):
 
 
 @app.post("/api/reset")
-async def reset():
-    config.reset_state()
+async def reset(session: CurrentSession):
+    sessions.clear(session)
     return {"status": "reset"}

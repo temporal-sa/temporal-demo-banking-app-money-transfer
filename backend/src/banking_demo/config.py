@@ -1,52 +1,11 @@
 from __future__ import annotations
 
-import asyncio
-
-from banking_demo.models import Account, Settings
-
-# ---------------------------------------------------------------------------
-# Global mutable state (in-memory, no database)
-# ---------------------------------------------------------------------------
-
-settings = Settings()
-
-# In-memory transfer storage
-transfers: dict[str, dict] = {}
-
-# Pending approvals for human-in-the-loop scenario
-pending_approvals: dict[str, dict] = {}
-
-# SSE event queues: transfer_id -> asyncio.Queue
-event_queues: dict[str, asyncio.Queue] = {}
-
-# Deposit failure tracking for API Downtime scenario
-deposit_attempt_counts: dict[str, int] = {}
-
-
-def should_fail_deposit(transfer_id: str) -> bool:
-    """For API Downtime scenario: deposit fails for the first ~5 attempts."""
-    count = deposit_attempt_counts.get(transfer_id, 0)
-    deposit_attempt_counts[transfer_id] = count + 1
-    return count < 5
+from banking_demo.models import Account
 
 
 def is_invalid_account(account_id: str) -> bool:
     """Check if an account ID is the invalid test account."""
     return account_id == "ACC-999"
-
-
-def reset_state() -> None:
-    """Reset all in-memory state for a fresh demo run."""
-    transfers.clear()
-    pending_approvals.clear()
-    deposit_attempt_counts.clear()
-    for q in event_queues.values():
-        while not q.empty():
-            try:
-                q.get_nowait()
-            except asyncio.QueueEmpty:
-                break
-    event_queues.clear()
 
 
 # ---------------------------------------------------------------------------

@@ -10,9 +10,11 @@ COPY pyproject.toml uv.lock ./
 COPY backend/ backend/
 COPY workflows/python/ workflows/python/
 
-# Lints every Python package in the workspace: `make test`
+# Lints every Python package in the workspace and runs the API's tests: `make test`
 FROM base AS test
-RUN uv sync --frozen --all-packages && uv run --frozen ruff check .
+RUN uv sync --frozen --all-packages \
+    && uv run --frozen ruff check . \
+    && uv run --frozen pytest -q backend/tests
 
 FROM base
 

@@ -2,45 +2,23 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime
 
-from banking_demo import config
-from banking_demo.models import StepStatus, TransferEvent
+from banking_demo.models import StepUpdate, TransferEvent
+from banking_demo.sessions import TransferRecord
 
 
-async def emit_event(
-    transfer_id: str,
-    step: str,
-    status: StepStatus,
-    *,
-    attempt: int = 1,
-    max_attempts: int = 1,
-    error: str | None = None,
-    detail: str = "",
-) -> None:
-    """Push a transfer event into the SSE queue for the given transfer."""
-    queue = config.event_queues.get(transfer_id)
-    if queue is None:
-        return
-
+async def publish(record: TransferRecord, update: StepUpdate) -> None:
+    """Queue a step update for the browser following this transfer."""
     event = TransferEvent(
-        transfer_id=transfer_id,
-        step=step,
-        status=status,
-        attempt=attempt,
-        max_attempts=max_attempts,
-        error=error,
-        detail=detail,
-        timestamp=datetime.now(),
+        transfer_id=record.transfer.transfer_id,
+        **update.model_dump(include=set(StepUpdate.model_fields)),
     )
-    await queue.put(event.model_dump(mode="json"))
+    await record.events.put(event.model_dump(mode="json"))
 
 
-async def event_generator(transfer_id: str):
+async def event_generator(record: TransferRecord):
     """Async generator yielding SSE events for a given transfer."""
-    queue = config.event_queues.get(transfer_id)
-    if queue is None:
-        return
+    queue = record.events
 
     while True:
         try:

@@ -47,7 +47,7 @@ reset: ## Terminate running transfers and clear the API's memory (local dev serv
 		--query 'ExecutionStatus="Running"' --reason "make reset" --yes
 	docker compose restart backend
 
-test: ## Lint the Python code; type-check, lint and build the frontend
+test: ## Lint and unit-test the Python code; type-check, lint and build the frontend
 	docker build --target test --file docker/backend.Dockerfile .
 	docker build --target test --file docker/frontend.Dockerfile .
 
