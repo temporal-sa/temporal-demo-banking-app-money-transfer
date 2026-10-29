@@ -124,7 +124,8 @@ Browser (React + Vite + Tailwind)
     | REST + SSE
 FastAPI Backend (Python)
     |-- Mock Bank Services (validate, withdraw, deposit)
-    |-- Internal API (failure state, SSE events, approvals)
+    |-- Browser sessions (scenario, transfers, approvals per browser)
+    |-- Internal API (Worker events and approvals, by Workflow ID)
     +-- Temporal client (starts workflows, sends signals)
            |
 Temporal Dev Server (container, local profile)
@@ -153,6 +154,17 @@ Two workflow classes:
 
 **Compensation (saga pattern):** If any step after withdrawal fails, the workflow reverses the withdrawal automatically and notifies the customer. No manual intervention needed.
 
+## Sessions and crashable workspaces
+
+Each browser gets its own demo, so presenters sharing a deployment don't see or reset each other's work:
+
+- The API sets an HttpOnly `banking_session` cookie holding a random ID it minted. It keeps that browser's scenario, transfers, events and pending approvals in memory. A cookie the API didn't mint, or doesn't remember, gets a new session.
+- A new session starts on **Happy Path**. Sessions idle for two hours are dropped, and an API restart drops them all.
+- Workflow IDs are `transfer-<task queue>-<session tag>-<transfer id>`. The session tag is a hash of the session ID, so the ID itself never reaches Temporal.
+- Activities report progress and approvals to `/api/internal/*` by Workflow ID, and the API routes each report to the session that started the transfer. nginx doesn't expose `/api/internal`.
+
+The demo supports the tmprl-demo.cloud catalog's crashable workspaces. A crashable workspace sets `TEMPORAL_TASK_QUEUE` to `MoneyTransfer-<workspace id>` on the API and the Worker, and the Workflow ID carries the queue, so workspaces sharing a Namespace don't collide. The catalog can then delete the Worker, or scale it to zero, while the app and API stay up. Every Activity has a 5-second start-to-close timeout and unlimited retries, so a transfer waits out a missing Worker and carries on when one returns.
+
 ## Project Structure
 
 ```
@@ -174,7 +186,7 @@ Two workflow classes:
 
 ```bash
 make dev     # The stack with source mounts: the API and frontend reload on save
-make test    # Ruff on the Python packages; type-check, ESLint and build the frontend
+make test    # Ruff and pytest on the Python packages; type-check, ESLint and build the frontend
 ```
 
 The Worker doesn't reload in `make dev`. Restart it after an edit with `docker compose restart worker-python`.

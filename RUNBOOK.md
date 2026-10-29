@@ -6,12 +6,13 @@ This runbook is for presenting the demo. The [README](README.md) explains what i
 
 A customer sends money between accounts in a phone banking app, and a Temporal Workflow moves it: validate, withdraw, deposit, notify. Each scenario breaks the transfer a different way, and the Workflow handles it without the app or a person stepping in.
 
-The demo makes four problems visible:
+The demo makes five problems visible:
 
 - **A bank API goes down partway through a transfer.** The withdrawal call fails four times and then recovers. The Workflow retries it on a backoff and the transfer finishes. Beat 2 shows it.
 - **The money left one account and can't reach the other.** The deposit is rejected for good, so the Workflow reverses the withdrawal. Beat 3 shows it.
 - **Some transfers need a person to approve them before the money moves.** The Workflow waits for a bank employee's approval, with a 30-second deadline. Beat 4 shows it.
 - **A bug in the transfer code.** The transfer pauses where the bug is instead of failing, and finishes once the fix is deployed. Beat 5 shows it, on a local run.
+- **The server running the transfer code crashes.** The transfer waits, and carries on from its last finished step when a Worker comes back. Beat 8 shows it, in a crashable environment or locally.
 
 ## Before you start
 
@@ -25,9 +26,13 @@ The demo makes four problems visible:
 
 ### On tmprl-demo.cloud
 
-The catalog runs this demo at https://banking-app.tmprl-demo.cloud on a Temporal Cloud Namespace, with the Python Worker on the default `MoneyTransfer` Task Queue. There's no crashable environment for this demo, so you can't deploy a fix there (beat 5) or turn on encryption (beat 7).
+The catalog runs this demo at https://banking-app.tmprl-demo.cloud on a Temporal Cloud Namespace, with the Python Worker on the default `MoneyTransfer` Task Queue.
 
-The deployment is shared. The scenario lives in the API's memory, and changing it resets the screen for everyone using the demo at that moment.
+Each browser gets its own demo. Your scenario, transfers and **Bank operations** approvals are yours alone, and a new browser starts on **Happy Path**. Tabs and windows in one browser profile share a demo; a private window or another browser starts a new one. Other presenters can still see your transfers in the Temporal UI, because everyone shares the Namespace.
+
+To crash the Worker (beat 8), press **Create crashable environment** on the demo's catalog page, wait for **Running**, and press **Open environment**. It's your own copy of the app with its own Worker, on Task Queue `MoneyTransfer-<id>`. It deletes itself after an hour unless you press **Extend +1h**.
+
+You can't deploy a fix (beat 5) or turn on encryption (beat 7) on tmprl-demo.cloud; both need a local run.
 
 ## Start it
 
@@ -139,17 +144,35 @@ The `Step` Search Attribute has to exist on the Namespace. If it doesn't, this t
 3. On **Workflows**, select **Configure Codec Server** in the top-right corner and set the endpoint to `http://localhost:8081`. The payloads now show in clear text.
 4. Say: "The Worker encrypts everything before it leaves the process. Temporal stores and shows ciphertext. Your browser decrypts it through a codec server you run, so the plaintext never goes through Temporal."
 
+### 8. Crash the Worker mid-transfer (crashable environment, or local)
+
+On tmprl-demo.cloud, run this in a crashable environment; see [On tmprl-demo.cloud](#on-tmprl-democloud). Keep its catalog page open next to the app. Locally, keep a terminal open at the repository root.
+
+1. Pick **Happy Path** and send a transfer. Any scenario works; Happy Path is the clearest.
+2. As soon as **Validate transfer** turns green, take the Worker away:
+   - In a crashable environment, press **Scale down workers**. The catalog shows **Workers scaled to zero**.
+   - Locally, run `docker compose kill worker-python`.
+3. The steps that finished stay green, the next step waits, and the badge at the top of **Behind the scenes** still reads **Running**. The phone stays on "Processing transfer…", and the app keeps answering. If you took the Worker away while a step was cyan, that step stays cyan.
+4. Say: "The process running the transfer code is gone. The transfer hasn't failed, and nothing is retrying in a loop. Temporal knows which steps are done and is holding the next one until a Worker asks for it."
+5. Bring the Worker back: press **Scale up workers**, or run `docker compose start worker-python`. Within a few seconds the next step runs and the transfer finishes. A step that was cyan runs again, because its attempt on the old Worker never reported back. Locally, a transfer finished after 15 seconds without a Worker.
+6. Say: "A new Worker picked up where the old one stopped. Nobody restarted the transfer, and the withdrawal didn't run twice."
+7. For proof, open the execution: one scheduled, started and completed set per step, with no failure.
+
+**Crash workers** deletes the Worker the way a crash would, and Kubernetes starts a new one straight away. The pause is shorter than a scale-down, so the steps hardly stop.
+
+To show that the API doesn't need a Worker, use **Human-in-the-Loop**: take the Worker away once the phone shows **Awaiting approval**, press **Approve**, then bring the Worker back within 30 seconds. The Signal waits in Temporal, and the transfer finishes when the Worker returns.
+
 ## Show it in code
 
-All links point at commit [`4f38b74`](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/commit/4f38b74a1f168848761bdded762bff51cf6bf0d2). Open a file locally with `code -g <path>:<line>`.
+Each link points at a fixed commit. Open a file locally with `code -g <path>:<line>`.
 
 The demo has two Workflow classes. `AccountTransferWorkflow` runs **Happy Path**. `AccountTransferWorkflowScenarios` is a dynamic Workflow that runs the other five scenarios and branches on the Workflow Type name the API started it with. Most entries below are in the second one.
 
 ### Retry a flaky bank API without writing retry code
 
-**When to use it:** after beat 2, or when someone asks what it took to survive the outage.
+**When to use it:** after beat 2 or beat 8, or when someone asks what it took to survive the outage.
 
-**Where it is:** [`workflows/python/src/banking_workflows/activities.py` lines 103–107](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/activities.py#L103-L107) (`code -g workflows/python/src/banking_workflows/activities.py:103`), used in [`workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py` lines 64–70](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py#L64-L70) (`code -g workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py:64`)
+**Where it is:** [`workflows/python/src/banking_workflows/activities.py` lines 88–92](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/f047b083a6df53fa7d243a08915a73e9ae3f7e25/workflows/python/src/banking_workflows/activities.py#L88-L92) (`code -g workflows/python/src/banking_workflows/activities.py:88`), used in [`workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py` lines 64–70](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py#L64-L70) (`code -g workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py:64`)
 
 ```python
 retry_policy = RetryPolicy(
@@ -173,7 +196,8 @@ await workflow.execute_activity(
 
 - The first retry waits 1 second, and each wait doubles, up to 30 seconds. In beat 2 the waits are 1, 2, 4 and 8 seconds before the fifth attempt succeeds.
 - There's no `maximum_attempts`, so the Activity retries until it succeeds. The 5-second `start_to_close_timeout` limits one attempt, not the total. To cap the total time, add a `schedule_to_close_timeout`; to cap the count, set `maximum_attempts`.
-- The **Happy Path** Workflow sets the same policy but uses a 5-second `schedule_to_close_timeout` instead ([`account_transfer_workflow.py` line 29](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow.py#L29)). That caps all attempts of each Activity together at 5 seconds, so an outage like beat 2's would fail it.
+- The **Happy Path** Workflow uses the same policy and timeout ([`account_transfer_workflow.py` line 29](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/f047b083a6df53fa7d243a08915a73e9ae3f7e25/workflows/python/src/banking_workflows/account_transfer_workflow.py#L29)).
+- The same settings carry beat 8. An attempt that was running on a crashed Worker times out after 5 seconds and runs again on the next Worker. With no total cap, the transfer waits as long as the Worker is gone.
 - Temporal schedules each retry on the server. The Worker holds nothing while it waits, and a Worker restart in the middle doesn't reset the count.
 - The Workflow makes an idempotency key with `workflow.uuid4()` and passes it to `withdraw` and `deposit`, so a real bank API could ignore a repeated call. `workflow.uuid4()` returns the same value when the Workflow replays. The mock Activities don't use the key.
 
@@ -185,12 +209,12 @@ await workflow.execute_activity(
 
 **When to use it:** during beat 3, or when someone asks how Temporal knows not to retry forever.
 
-**Where it is:** [`workflows/python/src/banking_workflows/activities.py` lines 177–186](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/activities.py#L177-L186) (`code -g workflows/python/src/banking_workflows/activities.py:177`)
+**Where it is:** [`workflows/python/src/banking_workflows/activities.py` lines 162–171](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/f047b083a6df53fa7d243a08915a73e9ae3f7e25/workflows/python/src/banking_workflows/activities.py#L162-L171) (`code -g workflows/python/src/banking_workflows/activities.py:162`)
 
 ```python
 if self.INVALID_ACCOUNT == error:
     await _emit_event(
-        transfer_id, "deposit", "failed",
+        workflow_id, "deposit", "failed",
         error="Account is invalid",
     )
     raise ApplicationError(
@@ -254,7 +278,7 @@ except Exception as ex:
 
 **When to use it:** during beat 4, or when someone asks how the Workflow waits for the back office.
 
-**Where it is:** [`workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py` lines 73–104](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py#L73-L104) (`code -g workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py:73`) and the Signal handler at [lines 145–153](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py#L145-L153). **Approve** sends the Signal from [`backend/src/banking_demo/api/routes.py` lines 190–208](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/backend/src/banking_demo/api/routes.py#L190-L208).
+**Where it is:** [`workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py` lines 73–104](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py#L73-L104) (`code -g workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py:73`) and the Signal handler at [lines 145–153](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py#L145-L153). **Approve** sends the Signal from [`backend/src/banking_demo/api/routes.py` lines 232–250](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/f047b083a6df53fa7d243a08915a73e9ae3f7e25/backend/src/banking_demo/api/routes.py#L232-L250).
 
 ```python
 if self.NEEDS_APPROVAL == self.workflow_type:
@@ -284,14 +308,13 @@ def approveTransferSignal(self) -> str:
 
 ```python
 client = await get_temporal_client()
-handle = client.get_workflow_handle(f"transfer-{transfer_id}")
-await handle.signal("approveTransfer")
+await client.get_workflow_handle(record.workflow_id).signal("approveTransfer")
 ```
 
 **What you need to understand:**
 
 - `wait_condition` blocks until `self.approved` is true or 30 seconds pass. Temporal keeps the wait and the timer durable, so a Worker restart during the wait doesn't lose either.
-- The `approveTransfer` Signal sets the flag. The API sends it by Workflow ID; it doesn't need anything from the Worker.
+- The `approveTransfer` Signal sets the flag. The API sends it by Workflow ID; it doesn't need anything from the Worker, so it works while the Worker is down (beat 8).
 - On timeout, `wait_condition` raises `asyncio.TimeoutError`, and the Workflow removes the pending card and fails with `ApprovalTimeout`. It doesn't reverse the withdrawal; that would need the undo step from the previous entry.
 - There's no deny Signal. **Deny** in the UI only removes the card. A real approval flow would send the decision in the Signal and act on a denial right away.
 - In production the deadline would be hours or days, not 30 seconds. The wait costs the same either way.
@@ -392,17 +415,18 @@ async def encode(self, payloads: Iterable[Payload]) -> List[Payload]:
 
 When someone asks what they'd change for their own system, these are the parts to leave out:
 
-- **The bank is simulated.** [`workflows/python/src/banking_workflows/activities.py` lines 109–119](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/activities.py#L109-L119): each Activity sleeps and fails while the attempt number is below 5, if the Workflow Type names that failure. Real Activities call the bank's APIs, and the failures come from the bank.
-- **The scenario is the Workflow Type name.** [`backend/src/banking_demo/models.py` lines 19–26](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/backend/src/banking_demo/models.py#L19-L26) maps each scenario to a name, and the dynamic Workflow branches on it. A real system has one transfer Workflow.
-- **The UI events.** [`workflows/python/src/banking_workflows/activities.py` lines 19–60](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/activities.py#L19-L60): Activities post their progress to the API so the screen can animate. The pending-approval list in **Bank operations** is kept the same way.
+- **The bank is simulated.** [`workflows/python/src/banking_workflows/activities.py` lines 94–104](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/f047b083a6df53fa7d243a08915a73e9ae3f7e25/workflows/python/src/banking_workflows/activities.py#L94-L104): each Activity sleeps and fails while the attempt number is below 5, if the Workflow Type names that failure. Real Activities call the bank's APIs, and the failures come from the bank.
+- **The scenario is the Workflow Type name.** [`backend/src/banking_demo/models.py` lines 18–25](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/f047b083a6df53fa7d243a08915a73e9ae3f7e25/backend/src/banking_demo/models.py#L18-L25) maps each scenario to a name, and the dynamic Workflow branches on it. A real system has one transfer Workflow.
+- **The UI events.** [`workflows/python/src/banking_workflows/activities.py` lines 19–80](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/f047b083a6df53fa7d243a08915a73e9ae3f7e25/workflows/python/src/banking_workflows/activities.py#L19-L80): Activities post their progress to the API, by Workflow ID, so the screen can animate. The pending-approval list in **Bank operations** is kept the same way.
+- **The browser sessions.** [`backend/src/banking_demo/sessions.py`](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/f047b083a6df53fa7d243a08915a73e9ae3f7e25/backend/src/banking_demo/sessions.py): the API keeps each browser's scenario and transfers in memory, so presenters sharing a deployment don't collide. A real app has its own users and stores transfers in a database.
 - **The progress sleeps.** `updateProgress` sleeps between steps so the audience can follow along. They're durable timers, and a real transfer wouldn't have them.
 - **The encryption key.** [`workflows/python/src/banking_workflows/codec.py` lines 16–18](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/codec.py#L16-L18).
 
 ## Reset and tear down
 
 - **Between transfers:** press **New transfer** on the phone. If a transfer never finishes on screen (beat 4 after a timeout, beat 5 before the fix), reload the page.
-- **Between scenarios:** picking a scenario in **Demo settings** clears the API's in-memory transfers and pending approvals. Workflows that are still running keep running.
-- **Close what's still open:** a **Bug in Workflow** transfer stays **Running** until the fix is deployed or you terminate it. Locally, `make reset` terminates every running transfer and clears the API's state, which also sets the scenario back to **Happy Path**. Otherwise terminate it from its page in the Temporal UI. On Temporal Cloud, do this before you leave; the Workflow Task keeps retrying until you do. A **Human-in-the-Loop** transfer ends on its own after 30 seconds.
+- **Between scenarios:** picking a scenario in **Demo settings** clears your browser's transfers and pending approvals from the API's memory. Workflows that are still running keep running.
+- **Close what's still open:** a **Bug in Workflow** transfer stays **Running** until the fix is deployed or you terminate it. Locally, `make reset` terminates every running transfer and restarts the API, which forgets every browser's demo; reload the page and it starts on **Happy Path**. Otherwise terminate it from its page in the Temporal UI. On Temporal Cloud, do this before you leave; the Workflow Task keeps retrying until you do. A **Human-in-the-Loop** transfer ends on its own after 30 seconds.
 - **To stop:** run `make down`. It removes the containers, including the dev server, which keeps its data in memory, so nothing carries over to the next start. With `scripts/start.sh`, press `Ctrl-C` in its terminal instead.
 
 ## When something goes wrong
@@ -414,7 +438,7 @@ When someone asks what they'd change for their own system, these are the parts t
 | After **Human-in-the-Loop**, the phone stays on "Processing transfer…" with no **New transfer** button, and **Await approval** is red | Nobody approved within 30 seconds, or someone pressed **Deny**; the Workflow failed with `ApprovalTimeout` | Expected in this code. Reload the page, and approve faster next time |
 | **Approve** does nothing, or the card is already gone | The 30 seconds had passed, or someone pressed **Deny** | Send a new transfer |
 | The **Bug in Workflow** transfer doesn't resume after the fix | The Worker is still running the old code | With Docker, rebuild it: `make worker`. Otherwise restart the Worker process |
-| The screen resets in the middle of a beat on tmprl-demo.cloud | Someone else changed the scenario on the shared deployment | Send the transfer again |
+| The header shows a scenario, but transfers run as **Happy Path** | The API restarted, after a deploy or `make reset`, and forgot your browser's demo | Reload the page, and pick the scenario again |
 | Payloads stay `binary/encrypted` after setting the codec endpoint | The codec server isn't running, or the browser blocked it | Start with `make demo ENCRYPT=1`, which runs it on port 8081, give it a few seconds, and check the browser console |
 
 ## Keeping this runbook current
