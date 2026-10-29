@@ -1,25 +1,16 @@
-import type { ReactNode } from 'react'
-import { workflowSnippets, type CodeLine } from '../data/workflowCode'
-import type { CodeLanguage, StepStatus, TransferEvent } from '../types'
-import { PaneCollapseButton } from './PaneLayout'
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { workflowSnippets } from '../data/workflowCode'
+import { PaneCollapseButton } from '../kit'
+import { stepState } from '../transferSteps'
+import type { CodeLanguage, TransferEvent } from '../types'
 
 interface TemporalCodeViewProps {
   events: TransferEvent[]
   language: CodeLanguage
+  onLanguageChange: (language: CodeLanguage) => void
 }
 
-function getStepStatus(step: string, events: TransferEvent[]): StepStatus | null {
-  const stepEvents = events.filter((e) => e.step === step)
-  if (stepEvents.length === 0) return null
-  return stepEvents[stepEvents.length - 1].status
-}
-
-const STEP_BG: Record<string, string> = {
-  running: 'bg-(--ultraviolet)/20 border-l-2 border-(--indigo-300)',
-  completed: 'bg-(--mint)/8',
-  retrying: 'bg-(--mustard)/15 border-l-2 border-(--mustard)',
-  failed: 'bg-(--coral)/15 border-l-2 border-(--coral)',
-}
+const LANGUAGES = Object.keys(workflowSnippets) as CodeLanguage[]
 
 interface Syntax {
   comment: string
@@ -173,7 +164,7 @@ function tokenizeLine(text: string, syntax: Syntax): ReactNode[] {
     // Comments
     if (text.startsWith(syntax.comment, i)) {
       parts.push(
-        <span key={key++} className="text-(--gray-500) italic">
+        <span key={key++} className="c">
           {text.slice(i)}
         </span>
       )
@@ -187,7 +178,7 @@ function tokenizeLine(text: string, syntax: Syntax): ReactNode[] {
       while (end < text.length && text[end] !== quote) end++
       end++ // include closing quote
       parts.push(
-        <span key={key++} className="text-(--pink-100)">
+        <span key={key++} className="s">
           {text.slice(i, end)}
         </span>
       )
@@ -200,7 +191,7 @@ function tokenizeLine(text: string, syntax: Syntax): ReactNode[] {
       let end = i + 1
       while (end < text.length && /[\w.]/.test(text[end])) end++
       parts.push(
-        <span key={key++} className="text-(--mustard)">
+        <span key={key++} className="k">
           {text.slice(i, end)}
         </span>
       )
@@ -213,7 +204,7 @@ function tokenizeLine(text: string, syntax: Syntax): ReactNode[] {
       let end = i
       while (end < text.length && /[\d.]/.test(text[end])) end++
       parts.push(
-        <span key={key++} className="text-(--coral)">
+        <span key={key++} className="t">
           {text.slice(i, end)}
         </span>
       )
@@ -227,131 +218,112 @@ function tokenizeLine(text: string, syntax: Syntax): ReactNode[] {
       while (end < text.length && /[\w]/.test(text[end])) end++
       const word = text.slice(i, end)
 
-      if (syntax.constants.has(word)) {
-        parts.push(
-          <span key={key++} className="text-(--coral)">
-            {word}
-          </span>
-        )
-      } else if (syntax.keywords.has(word)) {
-        parts.push(
-          <span key={key++} className="text-(--purple)">
-            {word}
-          </span>
-        )
-      } else if (syntax.builtins.has(word)) {
-        parts.push(
-          <span key={key++} className="text-(--indigo-300)">
-            {word}
-          </span>
-        )
-      } else if (syntax.methods.has(word)) {
-        parts.push(
-          <span key={key++} className="text-(--mustard)">
-            {word}
-          </span>
-        )
-      } else if (syntax.domain.has(word)) {
-        parts.push(
-          <span key={key++} className="text-(--mint)">
-            {word}
-          </span>
-        )
-      } else {
-        parts.push(<span key={key++}>{word}</span>)
-      }
+      // Token classes are the kit's code palette: keyword, function, type/literal.
+      let tokenClass: string | undefined
+      if (syntax.keywords.has(word)) tokenClass = 'k'
+      else if (syntax.constants.has(word) || syntax.builtins.has(word)) tokenClass = 't'
+      else if (syntax.methods.has(word) || syntax.domain.has(word)) tokenClass = 'f'
+      parts.push(
+        <span key={key++} className={tokenClass}>
+          {word}
+        </span>
+      )
       i = end
       continue
     }
 
-    // Operators and punctuation
-    if ('=()[]{}:;,.+-*/<>!'.includes(text[i])) {
-      parts.push(
-        <span key={key++} className="text-(--gray-400)">
-          {text[i]}
-        </span>
-      )
-      i++
-      continue
-    }
-
-    // Default: whitespace and other
-    parts.push(<span key={key++}>{text[i]}</span>)
+    // Default: whitespace, operators and punctuation
+    parts.push(text[i])
     i++
   }
 
   return parts
 }
 
-export function TemporalCodeView({ events, language }: TemporalCodeViewProps) {
+export function TemporalCodeView({ events, language, onLanguageChange }: TemporalCodeViewProps) {
   const code = workflowSnippets[language]
   const approxLineCount = Math.round(code.lines.filter((line) => !line.isBlank).length / 10) * 10
+  const preRef = useRef<HTMLPreElement>(null)
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+  // The step that moved most recently is the one the Workflow is on.
+  const current = events.at(-1)
+  const currentStep = current?.step
+  const currentStatus = currentStep ? stepState(currentStep, events).status : undefined
+
+  useEffect(() => {
+    preRef.current?.querySelector('.ln.hl')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [currentStep, currentStatus, language])
+
+  const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    const i = LANGUAGES.indexOf(language)
+    const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: LANGUAGES.length - 1 }[event.key]
+    if (to === undefined) return
+    event.preventDefault()
+    const j = (to + LANGUAGES.length) % LANGUAGES.length
+    onLanguageChange(LANGUAGES[j])
+    tabRefs.current[j]?.focus()
+  }
 
   return (
-    <div className="h-full flex flex-col bg-(--slab)">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-(--line) flex items-center justify-between">
+    <div className="h-full flex flex-col">
+      <div className="card-head pane-head">
         <div>
-          <h2 className="eyebrow">Workflow Code</h2>
-          <p className="text-xs text-(--gray-300) mt-0.5">{code.label}</p>
+          <p className="eyebrow">{code.label} · simplified excerpt</p>
+          <h2 className="heading">Workflow code</h2>
         </div>
         <PaneCollapseButton />
       </div>
 
-      {/* Code */}
-      <div className="flex-1 overflow-y-auto p-3 font-(family-name:--mono) text-[13px] leading-5">
-        {code.lines.map((line, i) => (
-          <CodeLineRow
-            key={i}
-            line={line}
-            lineNumber={i + 1}
-            events={events}
-            syntax={SYNTAX[language]}
-          />
-        ))}
+      <pre
+        ref={preRef}
+        className="codeview"
+        id="workflow-code"
+        role="tabpanel"
+        tabIndex={0}
+        aria-label={`Money transfer Workflow, ${code.label}`}
+      >
+        {code.lines.map((line, i) => {
+          const lit = currentStep !== undefined && line.step === currentStep
+          return (
+            <span key={i} className={lit ? 'ln hl' : 'ln'} data-status={lit ? currentStatus : undefined}>
+              {line.isBlank ? '' : tokenizeLine(line.text, SYNTAX[language])}
+            </span>
+          )
+        })}
+      </pre>
 
-        {/* Footer message */}
-        <div className="mt-6 px-3 py-3 border-t border-(--line)">
-          {events.length === 0 ? (
-            <p className="text-xs text-(--gray-500) italic">
-              Initiate a transfer to see the code light up as each activity runs
-            </p>
-          ) : (
-            <div className="text-xs text-(--gray-400) space-y-1">
-              <p>No message queues. No retry services. No dead letter queues.</p>
-              <p className="text-(--mint) font-medium">
-                ~{approxLineCount} lines of code. Retries, signals, and compensation — all built in.
-              </p>
-            </div>
-          )}
-        </div>
+      <div className="px-4 py-2 border-t border-border">
+        {events.length === 0 ? (
+          <p className="muted">Start a transfer to see the code light up as each Activity runs.</p>
+        ) : (
+          <p className="muted">
+            No message queues, retry services or dead letter queues.{' '}
+            <span className="text-t-green">
+              ~{approxLineCount} lines of code, with retries, Signals and compensation built in.
+            </span>
+          </p>
+        )}
       </div>
-    </div>
-  )
-}
 
-function CodeLineRow({
-  line,
-  lineNumber,
-  events,
-  syntax,
-}: {
-  line: CodeLine
-  lineNumber: number
-  events: TransferEvent[]
-  syntax: Syntax
-}) {
-  const stepStatus = line.step ? getStepStatus(line.step, events) : null
-  const bgClass = stepStatus ? STEP_BG[stepStatus] || '' : ''
-
-  return (
-    <div className={`flex min-h-[20px] transition-colors duration-300 ${bgClass}`}>
-      <span className="w-8 flex-shrink-0 text-right pr-2 text-(--gray-500) select-none text-xs leading-5">
-        {lineNumber}
-      </span>
-      <span className={`flex-1 ${line.isBlank ? '' : 'whitespace-pre'} text-(--indigo-100)`}>
-        {line.isBlank ? '\u00A0' : tokenizeLine(line.text, syntax)}
-      </span>
+      <div className="code-tabs" role="tablist" aria-label="SDK language" onKeyDown={onTabKey}>
+        {LANGUAGES.map((value, i) => (
+          <button
+            key={value}
+            ref={(el) => {
+              tabRefs.current[i] = el
+            }}
+            type="button"
+            role="tab"
+            aria-selected={value === language}
+            aria-controls="workflow-code"
+            tabIndex={value === language ? 0 : -1}
+            onClick={() => onLanguageChange(value)}
+          >
+            {workflowSnippets[value].label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

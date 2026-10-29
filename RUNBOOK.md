@@ -40,48 +40,52 @@ From the repository root:
 
 The script prints a banner with the URLs when everything is up. Press `Ctrl-C` in that terminal to stop everything.
 
-Open http://localhost:5173. A healthy start shows the **Customer App** tab with a phone on **My Accounts** and a total balance of $180,000.00, a **Happy Path** button next to the settings icon in the top-right corner, a **Behind the Scenes** panel that reads "Initiate a transfer to see what happens behind the scenes", and the **Workflow Code** panel. The Temporal UI is at http://localhost:8233.
+Open http://localhost:5173. A healthy start shows the **Customer app** tab with a phone on **My Accounts** and a total balance of $180,000.00, **Scenario: Happy Path** and **Temporal UI** buttons in the top-right corner, a **Behind the scenes** panel that reads "Start a transfer to see what happens behind the scenes", and the **Workflow code** panel. The Temporal UI is at http://localhost:8233.
 
-The scenario button next to the settings icon opens the Namespace in the Temporal UI. After you confirm a transfer, **Open in Temporal UI** at the top of **Behind the Scenes** opens that transfer's execution.
+**Temporal UI** in the top-right corner opens the Namespace in the Temporal UI. After you confirm a transfer, **Open execution** at the bottom of **Behind the scenes** opens that transfer's execution.
 
-To give a panel more room on screen, drag the divider between two panels. Double-click a divider to reset it. The browser remembers the widths.
+To give a panel more room on screen, drag the divider between two panels. Double-click a divider to reset it. To put a panel away, press the button in its top-right corner; it folds to a narrow strip you can click to bring it back. The browser remembers the widths and folded panels.
 
 ## The walkthrough
 
 Every beat starts the same way: pick the scenario, then send a transfer.
 
-1. Click the settings icon in the top-right corner (**Demo Settings**) and click a scenario under **Transfer Scenario**. The settings panel closes and the phone goes back to **My Accounts**.
-2. On the phone, press **Send Money**. Pick a **From** and a **To** account, type an amount or press one of **$50**, **$100**, **$250**, **$500**, and press **Review Transfer**.
-3. Press **Confirm Transfer**. The phone switches to **Transfer Status**.
-4. When it finishes, press **New Transfer** to go back to the accounts.
+1. Click the **Scenario:** button in the top-right corner (**Demo settings**) and click a scenario under **Choose a scenario**. The settings close and the phone goes back to **My Accounts**.
+2. On the phone, press **Send money**. Pick a **From** and a **To** account, type an amount or press one of **$50**, **$100**, **$250**, **$500**, and press **Review transfer**.
+3. Press **Confirm transfer**. The phone switches to **Transfer Status**.
+4. When it finishes, press **New transfer** to go back to the accounts.
+
+To show the Workflow in another SDK language, pick it in the tabs under **Workflow code**.
 
 The balances on screen are mock data and don't change after a transfer.
 
-Leave **Presentation** on **Detailed** (the default) to see the attempt counts and error messages in **Behind the Scenes**. **Simple** shows only a retry badge.
+Leave **Presentation** on **Detailed** (the default) to see each step's result and error messages in **Behind the scenes**. **Simple** shows only the step's service and its attempt count.
+
+**Behind the scenes** colours each step by its state: cyan while it runs, pink while it waits to retry, yellow while it waits on a person, green when it finishes and red when it fails. The legend at the bottom of the panel spells this out.
 
 ### 1. A transfer, step by step (Happy Path)
 
 1. Pick **Happy Path** and send a transfer.
-2. **Behind the Scenes** lights up **Validate Transfer**, **Withdraw Funds**, **Deposit Funds** and **Send Notification** in turn, and the matching lines in **Workflow Code** highlight. The phone ends on **Transfer Complete!**. It takes about ten seconds.
+2. **Behind the scenes** lights up **Validate transfer**, **Withdraw funds**, **Deposit funds** and **Send notification** in turn, and the lines for the running step highlight in **Workflow code**. The phone ends on **Transfer complete**. It takes about ten seconds.
 3. Say: "The app started one Workflow. Each of these boxes is an Activity, a call to a bank service. Temporal records each step as it finishes, so if anything crashed now, the transfer would pick up after the last finished step instead of starting over."
-4. For proof, click **Temporal Workflow** and show the Event History: one scheduled, started and completed set per Activity.
+4. For proof, click **Open execution** and show the Event History: one scheduled, started and completed set per Activity.
 
-The **Workflow Code** panel is a simplified picture of the Workflow, not a copy of it. Its retry settings and the `compensations` list don't match the real code. Use [Show it in code](#show-it-in-code) for the real lines.
+The **Workflow code** panel is a simplified picture of the Workflow, not a copy of it. Its retry settings and the `compensations` list don't match the real code. Use [Show it in code](#show-it-in-code) for the real lines.
 
 ### 2. The bank API goes down, and the transfer still finishes (API Downtime)
 
 1. Pick **API Downtime** and send a transfer.
-2. **Withdraw Funds** turns yellow with "Withdraw API unavailable" and counts up **Attempt 2/10**, **3/10**, **4/10**, with a longer pause each time. The fifth attempt succeeds, and the transfer finishes. Locally, the retries took about 17 seconds.
-3. The phone only says "Processing transfer...". The customer never sees the outage.
+2. **Withdraw funds** turns pink with "Withdraw API unavailable" between attempts, and its label counts up **· attempt 2**, **3**, **4**, with a longer pause each time. The fifth attempt succeeds, and the transfer finishes. Locally, the retries took about 17 seconds.
+3. The phone only says "Processing transfer…". The customer never sees the outage.
 4. Say: "The withdrawal service was down for a few seconds. Nobody wrote retry code for that. The Activity has a retry policy, and Temporal retried it with backoff until the service came back."
 5. For proof, open the execution while it's retrying: the pending Activity shows its attempt count and last failure. The Event History doesn't get an event per failed attempt; it records the Activity once, when it finishes.
 
-The settings panel says the deposit fails in this scenario. In the code, it's the withdrawal. The "/10" is a label the Activity sends to the UI; the real retry policy has no attempt limit.
+The settings say the deposit fails in this scenario. In the code, it's the withdrawal. The real retry policy has no attempt limit, whatever the **Workflow code** panel shows.
 
 ### 3. The deposit is rejected, and the money goes back (Invalid Account)
 
 1. Pick **Invalid Account** and send a transfer to any account.
-2. **Validate Transfer** and **Withdraw Funds** succeed. **Deposit Funds** fails on its first attempt with "Account is invalid", and a **Compensation (Saga)** branch appears with **Undo Withdrawal**. The phone ends on **Transfer Reversed**: "Funds have been returned to your account."
+2. **Validate transfer** and **Withdraw funds** succeed. **Deposit funds** fails on its first attempt with "Account is invalid", and a **Compensation (saga)** list appears with **Undo withdrawal**. The phone ends on **Transfer reversed**: "Funds have been returned to your account."
 3. Say: "This time retrying can't help: the account doesn't exist. The Activity marks the error as not retryable, so Temporal stops right away, and the Workflow runs the step that puts the money back."
 4. For proof, open the execution. It ends **Failed** with type `DepositFailed`, and the history shows `undoWithdraw` completing before the failure.
 
@@ -90,33 +94,33 @@ This scenario fails every transfer, whichever accounts you pick. The **Invalid T
 ### 4. A bank employee approves the transfer (Human-in-the-Loop)
 
 1. Pick **Human-in-the-Loop** and send a transfer.
-2. After the withdrawal, the phone shows **Awaiting Approval** and **Behind the Scenes** shows **Await Approval** running.
-3. Switch to the **Bank Operations** tab. The transfer appears under **Pending Approval** within a couple of seconds. Press **Approve** within 30 seconds of the withdrawal.
-4. Switch back to **Customer App**. The deposit and notification run, and the phone ends on **Transfer Complete!**.
+2. After the withdrawal, the phone shows **Awaiting approval** and **Behind the scenes** shows **Await approval** in yellow, under a **Waiting for approval** banner.
+3. Switch to the **Bank operations** tab. The transfer appears as a card marked **Waiting for approval** within a couple of seconds. Press **Approve** within 30 seconds of the withdrawal.
+4. Switch back to **Customer app**. The deposit and notification run, and the phone ends on **Transfer complete**.
 
-   To stay on **Customer App**, press **Approve transfer** on the **Await Approval** step in **Behind the Scenes** instead of steps 3 and 4. It sends the same Signal.
+   To stay on **Customer app**, press **Approve transfer** in the **Waiting for approval** banner in **Behind the scenes** instead of steps 3 and 4. It sends the same Signal.
 5. Say: "The Workflow has been waiting for a Signal from the bank's back office. It isn't holding a thread or polling a database. When the employee approves, Temporal delivers the Signal and the transfer carries on. It can wait like that for 30 seconds or 30 days."
 6. For proof, open the execution and find the `WorkflowExecutionSignaled` event for `approveTransfer`.
 
-Don't use this beat to show compensation. If no one approves in 30 seconds, the Workflow fails with `ApprovalTimeout` and the withdrawal isn't reversed, and the phone stays on "Depositing funds...". **Deny** only removes the card from the list; the Workflow still waits out the 30 seconds. Use beat 3 for compensation.
+Don't use this beat to show compensation. If no one approves in 30 seconds, the Workflow fails with `ApprovalTimeout` and the withdrawal isn't reversed. **Await approval** turns red, but the phone stays on "Processing transfer…". **Deny** turns the step red and removes the card from the list, but the Workflow still waits out the 30 seconds. Use beat 3 for compensation.
 
 ### 5. A bug pauses the transfer until you deploy a fix (Bug in Workflow)
 
 This beat needs a local run, because you edit the Workflow code and restart the Worker.
 
 1. Pick **Bug in Workflow** and send a transfer.
-2. **Withdraw Funds** completes, and then nothing else happens. The phone stays on "Processing transfer...".
+2. **Withdraw funds** completes, and then nothing else happens. The phone stays on "Processing transfer…".
 3. Open the execution in the Temporal UI. It's **Running**, and the history shows `WorkflowTaskFailed` with "Simulated bug - fix me!", repeating as Temporal retries the Workflow Task.
 4. Say: "That's a bug in our Workflow code, not an outage. Temporal doesn't fail the transfer or lose the withdrawal. It holds the Workflow where it is and keeps retrying until there's code that works."
 5. In `workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py`, comment out line 107, `raise RuntimeError("Simulated bug - fix me!")`.
 6. Restart the Worker with the fix:
    - With Docker: `docker compose up -d --build worker-python` from the repository root.
    - Without Docker: `scripts/start.sh` runs everything in one terminal, so for this beat start the services one by one as in the README's [Development](README.md#development) section, then stop the Worker with `Ctrl-C` and start it again.
-7. On the next Workflow Task retry, the transfer continues from after the withdrawal: deposit, then notification. The retries back off, so it can take several seconds. The phone ends on **Transfer Complete!**.
+7. On the next Workflow Task retry, the transfer continues from after the withdrawal: deposit, then notification. The retries back off, so it can take several seconds. The phone ends on **Transfer complete**.
 8. Say: "We fixed the code and restarted the Worker. The transfer picked up after the withdrawal it had already done, and didn't withdraw twice."
 9. Undo the edit afterwards: `git checkout -- workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py`.
 
-The settings panel says this scenario "demonstrates versioning/patching". The walkthrough above fixes the code in place. The fix only adds steps after the point where the Workflow stopped, so the transfer's history replays cleanly on the new code.
+The settings say this scenario "demonstrates versioning/patching". The walkthrough above fixes the code in place. The fix only adds steps after the point where the Workflow stopped, so the transfer's history replays cleanly on the new code.
 
 On tmprl-demo.cloud you can show steps 1 to 4 but not the fix. Terminate the transfer afterwards; see [Reset and tear down](#reset-and-tear-down).
 
@@ -390,14 +394,14 @@ When someone asks what they'd change for their own system, these are the parts t
 
 - **The bank is simulated.** [`workflows/python/src/banking_workflows/activities.py` lines 109–119](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/activities.py#L109-L119): each Activity sleeps and fails while the attempt number is below 5, if the Workflow Type names that failure. Real Activities call the bank's APIs, and the failures come from the bank.
 - **The scenario is the Workflow Type name.** [`backend/src/banking_demo/models.py` lines 19–26](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/backend/src/banking_demo/models.py#L19-L26) maps each scenario to a name, and the dynamic Workflow branches on it. A real system has one transfer Workflow.
-- **The UI events.** [`workflows/python/src/banking_workflows/activities.py` lines 19–60](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/activities.py#L19-L60): Activities post their progress to the API so the screen can animate. The pending-approval list in **Bank Operations** is kept the same way.
+- **The UI events.** [`workflows/python/src/banking_workflows/activities.py` lines 19–60](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/activities.py#L19-L60): Activities post their progress to the API so the screen can animate. The pending-approval list in **Bank operations** is kept the same way.
 - **The progress sleeps.** `updateProgress` sleeps between steps so the audience can follow along. They're durable timers, and a real transfer wouldn't have them.
 - **The encryption key.** [`workflows/python/src/banking_workflows/codec.py` lines 16–18](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/4f38b74a1f168848761bdded762bff51cf6bf0d2/workflows/python/src/banking_workflows/codec.py#L16-L18).
 
 ## Reset and tear down
 
-- **Between transfers:** press **New Transfer** on the phone. If a transfer never finishes on screen (beat 4 after a timeout, beat 5 before the fix), reload the page.
-- **Between scenarios:** picking a scenario in **Demo Settings** clears the API's in-memory transfers and pending approvals. Workflows that are still running keep running.
+- **Between transfers:** press **New transfer** on the phone. If a transfer never finishes on screen (beat 4 after a timeout, beat 5 before the fix), reload the page.
+- **Between scenarios:** picking a scenario in **Demo settings** clears the API's in-memory transfers and pending approvals. Workflows that are still running keep running.
 - **Close what's still open:** a **Bug in Workflow** transfer stays **Running** until the fix is deployed or you terminate it. Terminate it with `temporal workflow terminate --workflow-id transfer-<id>`, or from its page in the Temporal UI. On Temporal Cloud, do this before you leave; the Workflow Task keeps retrying until you do. A **Human-in-the-Loop** transfer ends on its own after 30 seconds.
 - **To stop:** press `Ctrl-C` in the `scripts/start.sh` terminal. It stops the containers or local processes and the dev server. Each start uses a fresh dev server database, so nothing carries over.
 
@@ -405,9 +409,9 @@ When someone asks what they'd change for their own system, these are the parts t
 
 | What you see | Likely cause | Fix |
 |---|---|---|
-| The phone stays on "Processing transfer..." and **Behind the Scenes** stays empty | The Worker isn't running, or it polls a different Task Queue from the one the API starts on | Check the Worker's logs. Both read `TEMPORAL_TASK_QUEUE` and default to `MoneyTransfer` |
+| The phone stays on "Processing transfer…" and **Behind the scenes** stays empty | The Worker isn't running, or it polls a different Task Queue from the one the API starts on | Check the Worker's logs. Both read `TEMPORAL_TASK_QUEUE` and default to `MoneyTransfer` |
 | An **Advanced Visibility** transfer stalls before **Validate Transfer** | The `Step` Search Attribute doesn't exist on the Namespace | Locally: `temporal operator search-attribute create --name Step --type Keyword`. On Cloud, add it to the Namespace |
-| After **Human-in-the-Loop**, the phone stays on "Depositing funds..." with no **New Transfer** button | Nobody approved within 30 seconds; the Workflow failed with `ApprovalTimeout` | Expected in this code. Reload the page, and approve faster next time |
+| After **Human-in-the-Loop**, the phone stays on "Processing transfer…" with no **New transfer** button, and **Await approval** is red | Nobody approved within 30 seconds, or someone pressed **Deny**; the Workflow failed with `ApprovalTimeout` | Expected in this code. Reload the page, and approve faster next time |
 | **Approve** does nothing, or the card is already gone | The 30 seconds had passed, or someone pressed **Deny** | Send a new transfer |
 | The **Bug in Workflow** transfer doesn't resume after the fix | The Worker is still running the old code | With Docker, rebuild: `docker compose up -d --build worker-python`. Otherwise restart the Worker process |
 | The screen resets in the middle of a beat on tmprl-demo.cloud | Someone else changed the scenario on the shared deployment | Send the transfer again |

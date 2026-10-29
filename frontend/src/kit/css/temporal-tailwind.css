@@ -1,0 +1,120 @@
+/* temporal-tailwind.css — the Temporal tokens, exposed to Tailwind 4 utilities.
+   For a demo whose UI is React, Svelte or anything else built with Tailwind, so it
+   can use the same palette, type and square corners as the plain-CSS demos instead
+   of stock Tailwind grays. The visual-workflows editor proved this arrangement.
+
+   Replace the `@import "tailwindcss"` line in the app's entry stylesheet with:
+
+     @import "tailwindcss";
+     @import "../assets/css/temporal-tailwind.css";
+
+   Copy assets/css, assets/fonts and assets/brand into the app so the @font-face
+   paths in temporal-theme.css resolve. With Vite, a copy under `public/` or a
+   symlink both work; see guide 19.
+
+   Then write utilities against the tokens: `bg-canvas`, `text-t-green`,
+   `border-border`, `font-mono`. Status colours come from the same vocabulary as the
+   plain-CSS components: `text-status-waiting`, `border-status-retrying`. */
+
+@import "./temporal-theme.css";
+@import "./temporal-components.css";
+
+/* Surfaces that a component-heavy UI needs beyond the page background: a panel that
+   sits on the page, and a darker canvas for a graph or editor area. */
+:root {
+  --panel:  #181a24;
+  --canvas: #101114;
+  --radius: 0px;
+}
+
+@theme inline {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Noto Sans Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Square corners everywhere: `rounded-lg` and friends become no-ops, so a
+     vendored component library inherits the Temporal shape without edits. */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+
+  /* Palette */
+  --color-space-black: var(--space-black);
+  --color-off-white:   var(--off-white);
+  --color-panel:       var(--panel);
+  --color-canvas:      var(--canvas);
+  --color-border:      var(--border);
+  --color-control-edge: var(--control-edge);
+  --color-t-uv:         var(--uv);
+  --color-t-uv-light:   var(--uv-light);
+  --color-t-indigo:     var(--indigo-200);
+  --color-t-indigo-100: var(--indigo-100);
+  --color-t-indigo-300: var(--indigo-300);
+  --color-t-purple:     var(--purple);
+  --color-t-pink:       var(--pink);
+  --color-t-green:      var(--green);
+  --color-t-green-soft: var(--green-soft);
+  --color-t-lime:       var(--lime);
+  --color-t-yellow:     var(--yellow);
+  --color-t-cyan:       var(--cyan);
+  --color-t-slate:      var(--slate-300);
+  --color-t-slate-dim:  var(--slate-500);
+  --color-t-red:        var(--red);
+
+  /* Status vocabulary (see temporal-components.css). Prefer these over raw hues for
+     anything that shows the state of a piece of work, so the meaning stays honest. */
+  --color-status-pending:   var(--slate-300);
+  --color-status-active:    var(--cyan);
+  --color-status-waiting:   var(--yellow);
+  --color-status-retrying: var(--pink);
+  --color-status-completed: var(--green);
+  --color-status-failed:    var(--red);
+  --color-status-skipped:   var(--slate-300);
+}
+
+/* ---------- shadcn / bits-ui token mapping ----------
+   Delete this block if the demo doesn't vendor a component library. It points
+   shadcn's semantic tokens at the Temporal palette so vendored primitives come out
+   themed. `--destructive` is the only place red belongs (guide 02). */
+:root {
+  --background: var(--space-black);
+  --foreground: var(--off-white);
+  --card: var(--panel);
+  --card-foreground: var(--off-white);
+  --popover: #1b1d29;
+  --popover-foreground: var(--off-white);
+  --primary: var(--uv);
+  --primary-foreground: var(--off-white);
+  --secondary: #1f2233;
+  --secondary-foreground: var(--off-white);
+  --muted: #1f2233;
+  --muted-foreground: var(--slate-300);
+  --accent: #262a40;
+  --accent-foreground: var(--off-white);
+  --destructive: var(--red);
+  --input: #2b3a52;
+  --ring: var(--green-soft);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}

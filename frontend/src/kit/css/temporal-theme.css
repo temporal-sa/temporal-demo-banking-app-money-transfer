@@ -1,0 +1,226 @@
+/* temporal-theme.css — the temporal.io look for demo UIs.
+   Drop in with assets/fonts and assets/brand next to it. See guides/02-visual-theme.md.
+
+   Contents: fonts · tokens · base · backdrop (grid floor, glow blobs; starfield is
+   js/starfield.js) · typography · buttons · cards · pills/badges · Ziggy + speech
+   bubble · drifting Ziggies (js/ziggy-drift.js) · reduced motion. */
+
+/* ---------- Fonts (Aeonik is commercial; Manrope stands in) ---------- */
+@font-face {
+  font-family: "Manrope";
+  src: url("../fonts/manrope-latin.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans Mono";
+  src: url("../fonts/noto-sans-mono-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+/* ---------- Tokens ---------- */
+:root {
+  /* Brand */
+  --space-black: #141414;   /* page / card background */
+  --off-white:   #f8fafc;   /* primary text */
+  --uv:          #444ce7;   /* Temporal ultraviolet */
+  --uv-light:    #6169ed;   /* hover borders */
+  --indigo-100:  #cacbf9;   /* secondary text, eyebrows */
+  --indigo-200:  #a5a9f5;   /* links */
+  --indigo-300:  #7f86f1;
+  --purple:      #b664ff;
+  --pink:        #ff6bff;
+  --green:       #1ff1a5;   /* "good / live" accent, focus, flow lines */
+  --green-soft:  #59fda0;
+  --lime:        #c3ff62;
+  --yellow:      #fecb2f;   /* "in progress" (e.g. ramping) */
+  --cyan:        #4fd8ff;
+  --slate-300:   #92a4c3;   /* muted text */
+  --slate-500:   #465a78;   /* dim borders, inactive */
+  --border:      #243349;   /* card border */
+  --red:         #ff5555;   /* RESERVED for real errors only */
+  --glow-magenta: #db35d0;  /* hot end of the pink backdrop glow; decoration only */
+
+  /* Code (temporal.io's highlighting palette; the comment colour is lifted to 4.5:1) */
+  --code-text:     #f8fafc;
+  --code-keyword:  #7f86f1;
+  --code-function: #cccef0;
+  --code-string:   #edc38d;
+  --code-literal:  #59fda0;   /* numbers, constants, types */
+  --code-comment:  #7c8fb1;
+
+  /* Shape. Corners are square; the one exception is a bar on the event timeline. */
+  --radius-bar: 7px;
+  /* A hard offset shadow, for a card lifted off a coloured or image ground (guide 02). */
+  --shadow-offset: .45rem .45rem 0 0 var(--uv);
+
+  /* Gradients (verbatim from temporal.io) */
+  --grad-uv:    linear-gradient(45deg, #b664ff 0%, #444ce7 100%);
+  --grad-green: linear-gradient(255deg, #1ff1a5 0%, #c3ff62 100%);
+  --grad-hero:  linear-gradient(254deg, #211b4e 27.97%, #141414 100%);
+
+  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Noto Sans Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color-scheme: dark;
+}
+
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--space-black) var(--grad-hero) fixed;
+  color: var(--off-white);
+  font-family: var(--font-sans);
+  font-weight: 300;
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--indigo-200); }
+strong { font-weight: 600; color: var(--indigo-100); }
+
+/* ---------- Backdrop (pair with <canvas id="stars"> + js/starfield.js) ---------- */
+#stars { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -3; pointer-events: none; }
+.grid-floor {
+  position: fixed; left: -50%; right: -50%; bottom: -10vh; height: 55vh;
+  z-index: -2; pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--uv-light) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--uv-light) 35%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+  transform: perspective(420px) rotateX(62deg);
+  transform-origin: center top;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 40%, #000 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 40%, #000 70%, transparent 100%);
+  opacity: .4;
+  animation: floor-scroll 6s linear infinite;
+}
+@keyframes floor-scroll { to { background-position: 0 64px, 0 64px; } }
+/* <div class="blur-container"><div class="blur-pink"></div><div class="blur-yellow"></div><div class="blur-green"></div></div> */
+.blur-container { position: fixed; inset: 0; overflow: hidden; z-index: -1; pointer-events: none; opacity: .5; }
+.blur-pink, .blur-yellow, .blur-green { position: absolute; filter: blur(175px); border-radius: 100%; animation: bounce 6s infinite alternate; }
+.blur-pink { background: linear-gradient(263deg, color-mix(in srgb, var(--glow-magenta) 80%, transparent) 18%, color-mix(in srgb, var(--purple) 64%, transparent) 49%, color-mix(in srgb, var(--purple) 16%, transparent) 70%); width: 1212px; height: 597px; top: -400px; right: -200px; animation-delay: 3s; }
+.blur-yellow { background-color: var(--yellow); width: 245px; height: 435px; bottom: -200px; right: -100px; transform: rotate(94deg); animation-delay: .3s; opacity: .6; }
+.blur-green { background: linear-gradient(92deg, color-mix(in srgb, var(--uv) 50%, transparent) 27%, color-mix(in srgb, var(--green) 50%, transparent) 84%); width: 1278px; height: 521px; bottom: -300px; left: -500px; transform: rotate(17deg); animation-delay: .6s; }
+@keyframes bounce {
+  0%, 100% { translate: 0 0; animation-timing-function: ease-in-out; }
+  50% { translate: 0 200px; animation-timing-function: ease-in-out; }
+}
+/* Optional pause: toggle this class on <body> from a button, together with
+   Starfield.setPaused(). Not required. */
+.motion-paused .grid-floor,
+.motion-paused .blur-container > * { animation-play-state: paused; }
+
+/* ---------- Typography ---------- */
+.display { font-weight: 300; line-height: 1.05; font-size: 3.4rem; letter-spacing: -.04em; margin: 0; }
+.heading { font-weight: 400; line-height: 1.2; font-size: 1.15rem; margin: 0; }
+.eyebrow, .mono { font-family: var(--font-mono); font-weight: 500; letter-spacing: -.025em; }
+.eyebrow { text-transform: uppercase; font-size: .72rem; letter-spacing: .05em; color: var(--indigo-100); margin: 0; }
+.muted { color: var(--slate-300); font-size: .72rem; }
+.text-gradient-ultraviolet, .text-gradient-green { -webkit-text-fill-color: transparent; -webkit-background-clip: text; background-clip: text; }
+.text-gradient-ultraviolet { background-image: linear-gradient(255deg, #b664ff 0%, #444ce7 100%); }
+.text-gradient-green { background-image: linear-gradient(90deg, #1ff1a5 0%, #c3ff62 100%); }
+
+/* ---------- Buttons: square corners, mono labels, UV ring on hover ---------- */
+.button {
+  display: inline-flex; align-items: center; justify-content: center; gap: .6rem; white-space: nowrap;
+  padding: .875rem 1.5rem; border: 2px solid transparent; background-origin: border-box;
+  font-family: var(--font-mono); font-weight: 500; font-size: 1rem; color: var(--off-white);
+  text-decoration: none; cursor: pointer; border-radius: 0;
+  transition: color .15s, background-color .15s, border-color .15s, box-shadow .15s;
+}
+.button.small { padding: .45rem .9rem; font-size: .8rem; }
+.button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--green-soft); }
+.button:disabled { opacity: .5; cursor: wait; }
+.primary.ultraviolet { background-image: var(--grad-uv); }
+.primary.ultraviolet:hover { box-shadow: 0 0 0 4px rgba(68, 76, 231, .7); }
+.primary.ultraviolet:active { color: var(--indigo-100); box-shadow: none; }
+.primary.green { color: var(--space-black); background-image: var(--grad-green); }
+.secondary { background-color: var(--space-black); }
+.secondary.ultraviolet { background: linear-gradient(#141414, #141414) padding-box, linear-gradient(45deg, #444ce7, #b664ff) border-box; }
+.secondary.ultraviolet:hover { border-color: var(--indigo-300); background: var(--space-black); }
+.secondary.green { background: linear-gradient(#141414, #141414) padding-box, linear-gradient(45deg, #1ff1a5, #c3ff62) border-box; }
+.secondary.green:hover { border-color: var(--green-soft); background: var(--space-black); }
+
+/* ---------- Cards ---------- */
+.card {
+  background-color: rgba(20, 20, 20, .82);
+  border: 1px solid var(--border);
+  transition: border-color .2s cubic-bezier(0, 0, .2, 1);
+  padding: .85rem 1rem;
+  min-width: 0; min-height: 0;   /* let grid/flex tracks shrink below content */
+}
+.card:hover { border-color: var(--uv-light); }
+.glass { backdrop-filter: blur(2px); background: linear-gradient(to top right, #141414cc, #1f203f99); }
+/* Raised: a hard offset shadow for a card lifted off a coloured or image ground,
+   such as a quote or a featured item on a gradient band. Never on data panels. */
+.card.raised { background-color: var(--space-black); box-shadow: var(--shadow-offset); }
+
+/* ---------- Pills & badges ---------- */
+.pill { font-family: var(--font-mono); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: .2rem .55rem; color: var(--space-black); background: var(--grad-green); white-space: nowrap; }
+.pill.alt { background: linear-gradient(255deg, #ff6bff 0%, #b664ff 100%); color: var(--off-white); }
+.badge { font-family: var(--font-mono); font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: .15rem .45rem; border: 1px solid currentColor; white-space: nowrap; }
+.badge.good { color: var(--green); }
+.badge.progress { color: var(--yellow); }
+.badge.leaving { color: var(--pink); }
+.badge.idle { color: var(--slate-300); }
+.badge.error { color: var(--red); }  /* only for actual failures */
+
+/* ---------- Ziggy + speech bubble ----------
+   <div class="ziggy-stage" data-phase="idle">
+     <div class="speech">Drifting in orbit.</div>
+     <div class="ziggy-orbit"><img class="ziggy" src="../brand/ziggy.png" alt="Ziggy"></div>
+   </div>
+   ziggy.png ships on a BLACK background: mix-blend-mode: lighten on the
+   (transformed) wrapper lets the page show through. See guides/03-ziggy-and-brand.md. */
+.ziggy-stage { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; }
+.ziggy-orbit { position: relative; height: 8.5rem; animation: float 6s ease-in-out infinite; mix-blend-mode: lighten; }
+.ziggy-orbit::before {
+  content: ""; position: absolute; inset: 10% 15%; border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow, rgba(68, 76, 231, .45)), transparent);
+  filter: blur(30px); transition: background .6s;
+}
+.ziggy { position: relative; height: 100%; width: auto; max-width: none; }
+@keyframes float { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-.8rem) rotate(2deg); } }
+/* Bubble anchored to Ziggy's head (image centered, head ~38% across / 15% down);
+   the tail is on the bubble's LEFT edge pointing down-left at the head. */
+.speech {
+  position: absolute; left: calc(50% - .6rem); top: calc(50% - 6.2rem); z-index: 2;
+  width: max-content; max-width: 13rem;
+  font-family: var(--font-mono); font-size: .72rem; font-weight: 500; color: var(--space-black);
+  background: var(--off-white); padding: .5rem .7rem .5rem 2rem;
+  clip-path: polygon(1.3rem 0, 100% 0, 100% 100%, 1.3rem 100%, 1.3rem 80%, 0 100%, 1.3rem 52%);
+}
+/* Phase moods */
+.ziggy-stage[data-phase="busy"] .ziggy-orbit { animation: float 1.6s ease-in-out infinite, wobble .35s ease-in-out infinite; --glow: rgba(31, 241, 165, .5); }
+.ziggy-stage[data-phase="paused"] .ziggy-orbit { animation-play-state: paused; }
+.ziggy-stage[data-phase="paused"] .ziggy { filter: grayscale(.7); }
+.ziggy-stage[data-highlight="true"] .ziggy-orbit { --glow: rgba(255, 107, 255, .6); }
+@keyframes wobble { 0%, 100% { rotate: -1.5deg; } 50% { rotate: 1.5deg; } }
+
+/* ---------- Drifting Ziggies over a starfield banner (js/ziggy-drift.js) ----------
+   <section class="drift-banner">
+     <canvas class="stars" aria-hidden="true"></canvas>
+     <div class="ziggy-drift" aria-hidden="true"></div>
+     <div class="drift-content">…</div>
+   </section>
+   No z-index or isolation on the banner: each drifter blends with `lighten`
+   against the stars behind it, and an isolated group would show the black box. */
+.drift-banner { position: relative; overflow: hidden; }
+.drift-banner > .stars { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.drift-content { position: relative; }
+.ziggy-drift { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.ziggy-drift .drifter {
+  position: absolute; top: 0; left: 0; mix-blend-mode: lighten; will-change: transform;
+  animation: ziggy-cross linear infinite;
+}
+.ziggy-drift .drifter img { display: block; width: auto; max-width: none; transform: scaleX(var(--flip)); }
+@keyframes ziggy-cross {
+  from { transform: translate(calc(var(--x0) * var(--dw) / 100), calc(var(--y0) * var(--dh) / 100)) translate(-50%, -50%) rotate(var(--r0)); }
+  to   { transform: translate(calc(var(--x1) * var(--dw) / 100), calc(var(--y1) * var(--dh) / 100)) translate(-50%, -50%) rotate(var(--r1)); }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}

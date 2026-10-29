@@ -30,11 +30,11 @@ To present the demo, follow [RUNBOOK.md](RUNBOOK.md): the walkthrough beat by be
 
 ### 1. Send a transfer (Happy Path)
 
-Browse your accounts, pick a sender and recipient, enter an amount, and confirm. The behind-the-scenes panel shows each workflow activity executing. The code panel on the right shows the actual workflow code lighting up in real time. Drag the dividers between the three panels to resize them (double-click a divider to reset it).
+Browse your accounts, pick a sender and recipient, enter an amount, and confirm. The behind-the-scenes panel shows each workflow activity executing. The code panel on the right shows the actual workflow code lighting up in real time. Drag the dividers between the three panels to resize them (double-click a divider to reset it), or fold a panel away with the button in its corner. The tabs under the code panel switch SDK language.
 
 ### 2. Explore the six scenarios
 
-Click the settings icon in the top-right corner to switch scenarios:
+Click the **Scenario:** button in the top-right corner to switch scenarios:
 
 | Scenario | What Happens | Key Temporal Feature |
 |---|---|---|
@@ -45,9 +45,9 @@ Click the settings icon in the top-right corner to switch scenarios:
 | **Bug in Workflow** | Intentional error after withdraw — compensation runs | Saga compensation, versioning concept |
 | **Invalid Account** | Validation fails immediately, non-retryable | Non-retryable errors |
 
-### 3. Bank Operations tab
+### 3. Bank operations tab
 
-Switch to the **Bank Operations** tab to act as a bank employee. When running the Human-in-the-Loop scenario, pending transfers appear here for approval or denial. You can also press **Approve transfer** on the **Await Approval** step in the behind-the-scenes panel without leaving the Customer App. If no one approves within 30 seconds, the workflow fails with `ApprovalTimeout`.
+Switch to the **Bank operations** tab to act as a bank employee. When running the Human-in-the-Loop scenario, pending transfers appear here for approval or denial. You can also press **Approve transfer** in the **Waiting for approval** banner in the behind-the-scenes panel without leaving the customer app. If no one approves within 30 seconds, the workflow fails with `ApprovalTimeout`.
 
 ### 4. Inspect real workflows
 
@@ -191,6 +191,6 @@ uv run python -m banking_workflows.codec_server                                 
 
 ## Settings
 
-Click the settings icon in the top-right corner to configure:
-- **Transfer Scenario**: Happy Path, Advanced Visibility, Human-in-the-Loop, API Downtime, Bug in Workflow, Invalid Account
-- **Presentation Mode**: Simple (high-level) vs Detailed (retries, error messages, payloads)
+Click the **Scenario:** button in the top-right corner to configure:
+- **Scenario**: Happy Path, Advanced Visibility, Human-in-the-Loop, API Downtime, Bug in Workflow, Invalid Account
+- **Presentation**: Simple (each step's service and attempt count) or Detailed (adds each step's result and error messages)

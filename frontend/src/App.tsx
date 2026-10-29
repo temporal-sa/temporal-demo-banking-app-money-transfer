@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AccountsList } from './components/AccountsList'
-import { BackstagePanel } from './components/BackstagePanel'
 import { BankOperations } from './components/BankOperations'
-import { PaneCollapseButton, PaneLayout } from './components/PaneLayout'
-import { PhoneFrame } from './components/PhoneFrame'
-import { SettingsModal } from './components/SettingsModal'
+import { SettingsDialog } from './components/SettingsDialog'
 import { TemporalCodeView } from './components/TemporalCodeView'
+import { TransferBackstage } from './components/TransferBackstage'
 import { TransferForm } from './components/TransferForm'
 import { TransferReview } from './components/TransferReview'
 import { TransferTracker } from './components/TransferTracker'
 import { useCodeLanguage } from './hooks/useCodeLanguage'
-import { useSSE } from './hooks/useSSE'
+import { PaneCollapseButton, PaneLayout, PhoneFrame, useLiveEvents } from './kit'
+import { SCENARIOS } from './scenarios'
 import type {
   Account,
   CreateTransferResponse,
@@ -18,6 +17,7 @@ import type {
   PhoneScreen,
   Settings,
   TemporalUiInfo,
+  TransferEvent,
 } from './types'
 
 const DEFAULT_SETTINGS: Settings = {
@@ -25,14 +25,7 @@ const DEFAULT_SETTINGS: Settings = {
   presentation_mode: 'detailed',
 }
 
-const SCENARIO_LABELS: Record<string, string> = {
-  happy_path: 'Happy Path',
-  advanced_visibility: 'Advanced Visibility',
-  human_in_the_loop: 'Human-in-the-Loop',
-  api_downtime: 'API Downtime',
-  bug_in_workflow: 'Bug in Workflow',
-  invalid_account: 'Invalid Account',
-}
+const TRANSFER_EVENTS = { update: 'transfer_update', done: 'transfer_complete' }
 
 function App() {
   const [tab, setTab] = useState<DemoTab>('customer')
@@ -42,6 +35,7 @@ function App() {
   const [toAccount, setToAccount] = useState('')
   const [amount, setAmount] = useState('')
   const [transferId, setTransferId] = useState<string | null>(null)
+  const [workflowId, setWorkflowId] = useState<string | null>(null)
   const [isTransferring, setIsTransferring] = useState(false)
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [temporalUi, setTemporalUi] = useState<TemporalUiInfo | null>(null)
@@ -49,7 +43,10 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [codeLanguage, setCodeLanguage] = useCodeLanguage()
 
-  const { events, finalStatus, reset: resetSSE } = useSSE(transferId)
+  const { events, finalStatus, reset: resetEvents } = useLiveEvents<TransferEvent>(
+    transferId ? `/api/transfers/${transferId}/events` : null,
+    TRANSFER_EVENTS,
+  )
 
   useEffect(() => {
     fetch('/api/settings')
@@ -68,6 +65,17 @@ function App() {
       .catch(() => {})
   }, [])
 
+  const handleNewTransfer = useCallback(() => {
+    setTransferId(null)
+    setWorkflowId(null)
+    setTemporalWorkflowUrl(null)
+    setFromAccount('')
+    setToAccount('')
+    setAmount('')
+    setScreen('accounts')
+    resetEvents()
+  }, [resetEvents])
+
   const handleSaveSettings = useCallback(
     async (newSettings: Settings) => {
       setSettings(newSettings)
@@ -76,15 +84,9 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSettings),
       })
-      setTransferId(null)
-      setTemporalWorkflowUrl(null)
-      setScreen('accounts')
-      setFromAccount('')
-      setToAccount('')
-      setAmount('')
-      resetSSE()
+      handleNewTransfer()
     },
-    [resetSSE]
+    [handleNewTransfer]
   )
 
   const handleConfirmTransfer = useCallback(async () => {
@@ -101,22 +103,13 @@ function App() {
       })
       const data = (await res.json()) as CreateTransferResponse
       setTransferId(data.transfer_id)
+      setWorkflowId(data.workflow_id || null)
       setTemporalWorkflowUrl(data.temporal_ui_url || null)
       setScreen('tracking')
     } finally {
       setIsTransferring(false)
     }
   }, [fromAccount, toAccount, amount])
-
-  const handleNewTransfer = useCallback(() => {
-    setTransferId(null)
-    setTemporalWorkflowUrl(null)
-    setFromAccount('')
-    setToAccount('')
-    setAmount('')
-    setScreen('accounts')
-    resetSSE()
-  }, [resetSSE])
 
   const renderPhoneContent = () => {
     switch (screen) {
@@ -160,78 +153,60 @@ function App() {
     }
   }
 
+  const scenarioLabel =
+    SCENARIOS.find((s) => s.value === settings.scenario)?.label ?? settings.scenario
+
   return (
-    <div className="flex flex-col h-screen">
-      {/* Top bar */}
-      <header className="site-header">
-        <div className="wrap header-inner max-w-none">
-          <a href="/" className="brand" aria-label="Home">
-            <img src="/static/temporal-logo.svg" alt="Temporal" width="129" height="33" />
-            <span className="brand-product">Money Transfer</span>
+    <>
+      <header className="topbar app-header">
+        <a href="/" className="brand" aria-label="Money transfer demo home">
+          <img src="/static/temporal-logo.svg" alt="Temporal" width="129" height="33" />
+          <span className="brand-divider" />
+          <p className="eyebrow">Money transfer</p>
+        </a>
+        <nav className="segmented" aria-label="Views">
+          <button
+            type="button"
+            aria-current={tab === 'customer' ? 'page' : undefined}
+            onClick={() => setTab('customer')}
+          >
+            Customer app
+          </button>
+          <button
+            type="button"
+            aria-current={tab === 'operations' ? 'page' : undefined}
+            onClick={() => setTab('operations')}
+          >
+            Bank operations
+          </button>
+        </nav>
+        <div className="topbar-actions">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="button small secondary ultraviolet"
+            aria-haspopup="dialog"
+          >
+            Scenario: {scenarioLabel}
+          </button>
+          <a
+            href={temporalUi?.namespace_url || undefined}
+            target="_blank"
+            rel="noreferrer"
+            aria-disabled={temporalUi?.namespace_url ? undefined : true}
+            className="button small secondary green"
+            title={
+              temporalUi
+                ? `Open ${temporalUi.namespace} in the Temporal UI`
+                : 'Available once the server reports the Temporal UI address'
+            }
+          >
+            Temporal UI &#8599;
           </a>
-          <nav className="tabs" aria-label="Views">
-            <a
-              href="#customer"
-              aria-current={tab === 'customer' ? 'page' : undefined}
-              onClick={(event) => {
-                event.preventDefault()
-                setTab('customer')
-              }}
-            >
-              Customer App
-            </a>
-            <a
-              href="#operations"
-              aria-current={tab === 'operations' ? 'page' : undefined}
-              onClick={(event) => {
-                event.preventDefault()
-                setTab('operations')
-              }}
-            >
-              Bank Operations
-            </a>
-          </nav>
-          <div className="header-actions gap-3">
-            <a
-              href={temporalUi?.namespace_url || undefined}
-              target="_blank"
-              rel="noreferrer"
-              aria-disabled={!temporalUi?.namespace_url}
-              className="btn btn-secondary btn-sm"
-              onClick={(event) => {
-                if (!temporalUi?.namespace_url) event.preventDefault()
-              }}
-              title={
-                temporalUi?.namespace
-                  ? `Open ${temporalUi.namespace} in Temporal UI`
-                  : 'Open Temporal namespace'
-              }
-            >
-              <span>{SCENARIO_LABELS[settings.scenario] || settings.scenario}</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
-              </svg>
-            </a>
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="icon-btn"
-              title="Demo Settings"
-              aria-label="Demo Settings"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" />
-                <circle cx="16" cy="6" r="2" />
-                <circle cx="10" cy="12" r="2" />
-                <circle cx="18" cy="18" r="2" />
-              </svg>
-            </button>
-          </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex min-h-0">
         {tab === 'customer' ? (
           <PaneLayout
             className="flex-1"
@@ -239,15 +214,15 @@ function App() {
             panes={[
               {
                 id: 'phone',
-                title: 'Customer App',
+                title: 'Customer app',
                 defaultWidth: 380,
                 minWidth: 260,
                 content: (
                   <div className="pane-stack">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-(--line)">
+                    <div className="card-head pane-head">
                       <div>
-                        <h2 className="eyebrow">Customer App</h2>
-                        <p className="text-xs text-(--gray-300) mt-0.5">What the customer sees</p>
+                        <p className="eyebrow">What the customer sees</p>
+                        <h2 className="heading">Customer app</h2>
                       </div>
                       <PaneCollapseButton />
                     </div>
@@ -263,41 +238,45 @@ function App() {
               },
               {
                 id: 'backstage',
-                title: 'Behind the Scenes',
+                title: 'Behind the scenes',
                 defaultWidth: 420,
                 minWidth: 260,
                 content: (
-                  <BackstagePanel
+                  <TransferBackstage
                     events={events}
                     settings={settings}
                     finalStatus={finalStatus}
-                    temporalWorkflowUrl={temporalWorkflowUrl}
+                    workflowId={workflowId}
+                    executionUrl={temporalWorkflowUrl}
                   />
                 ),
               },
               {
                 id: 'code',
-                title: 'Workflow Code',
+                title: 'Workflow code',
                 minWidth: 320,
-                content: <TemporalCodeView events={events} language={codeLanguage} />,
+                content: (
+                  <TemporalCodeView
+                    events={events}
+                    language={codeLanguage}
+                    onLanguageChange={setCodeLanguage}
+                  />
+                ),
               },
             ]}
           />
         ) : (
           <BankOperations settings={settings} />
         )}
-      </div>
+      </main>
 
-      {/* Settings modal */}
-      <SettingsModal
+      <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         settings={settings}
         onSave={handleSaveSettings}
-        codeLanguage={codeLanguage}
-        onCodeLanguageChange={setCodeLanguage}
       />
-    </div>
+    </>
   )
 }
 
