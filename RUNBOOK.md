@@ -431,13 +431,13 @@ async def encode(self, payloads: Iterable[Payload]) -> List[Payload]:
 
 | SDK | Workflow |
 |---|---|
-| Go | [`workflows/go/transfer/workflow.go`](workflows/go/transfer/workflow.go) |
-| TypeScript | [`workflows/typescript/src/workflows.ts`](workflows/typescript/src/workflows.ts) |
-| Java | [`workflows/java/src/main/java/banking/AccountTransferWorkflow.java`](workflows/java/src/main/java/banking/AccountTransferWorkflow.java) |
-| .NET | [`workflows/dotnet/AccountTransferWorkflow.workflow.cs`](workflows/dotnet/AccountTransferWorkflow.workflow.cs) |
-| Ruby | [`workflows/ruby/lib/banking/account_transfer_workflow.rb`](workflows/ruby/lib/banking/account_transfer_workflow.rb) |
-| PHP | [`workflows/php/src/TransferWorkflow.php`](workflows/php/src/TransferWorkflow.php) |
-| Rust | [`workflows/rust/src/workflow.rs`](workflows/rust/src/workflow.rs) |
+| Go | [`workflows/go/transfer/workflow.go`](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/123994f51ad31b37844a4a903036ff8a16181348/workflows/go/transfer/workflow.go) |
+| TypeScript | [`workflows/typescript/src/workflows.ts`](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/123994f51ad31b37844a4a903036ff8a16181348/workflows/typescript/src/workflows.ts) |
+| Java | [`workflows/java/src/main/java/banking/AccountTransferWorkflow.java`](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/123994f51ad31b37844a4a903036ff8a16181348/workflows/java/src/main/java/banking/AccountTransferWorkflow.java) |
+| .NET | [`workflows/dotnet/AccountTransferWorkflow.workflow.cs`](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/123994f51ad31b37844a4a903036ff8a16181348/workflows/dotnet/AccountTransferWorkflow.workflow.cs) |
+| Ruby | [`workflows/ruby/lib/banking/account_transfer_workflow.rb`](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/123994f51ad31b37844a4a903036ff8a16181348/workflows/ruby/lib/banking/account_transfer_workflow.rb) |
+| PHP | [`workflows/php/src/TransferWorkflow.php`](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/123994f51ad31b37844a4a903036ff8a16181348/workflows/php/src/TransferWorkflow.php) |
+| Rust | [`workflows/rust/src/workflow.rs`](https://github.com/temporal-sa/temporal-demo-banking-app-money-transfer/blob/123994f51ad31b37844a4a903036ff8a16181348/workflows/rust/src/workflow.rs) |
 
 **What you need to understand:**
 
