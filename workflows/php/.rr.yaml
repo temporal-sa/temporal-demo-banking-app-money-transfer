@@ -1,0 +1,17 @@
+version: "3"
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php worker.php"
+
+temporal:
+  address: ${TEMPORAL_ADDRESS:-localhost:7233}
+  namespace: ${TEMPORAL_NAMESPACE:-default}
+  activities:
+    num_workers: 4
+
+logs:
+  level: info
+  mode: production

@@ -2,7 +2,7 @@
 set -e
 
 # Banking Transfer Demo — Launcher
-# Usage: ./scripts/start.sh [--encrypt] [--cloud-env <path>]
+# Usage: ./scripts/start.sh [--encrypt] [--cloud-env <path>] [--worker <language>]
 #
 # Prefers Docker for backend/worker/frontend.
 # Falls back to running everything locally if Docker isn't available.
@@ -13,11 +13,13 @@ set -e
 # Options:
 #   --encrypt              Enable AES-GCM payload encryption + codec server
 #   --cloud-env <path>     Load Temporal Cloud connection settings from env file
+#   --worker <language>    python (default), go, typescript, java, dotnet, ruby, php, rust
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MISSING=()
 ENCRYPT=""
 CLOUD_ENV=""
+WORKER="python"
 
 # -- Parse flags --
 while [[ $# -gt 0 ]]; do
@@ -31,9 +33,26 @@ while [[ $# -gt 0 ]]; do
       fi
       shift 2
       ;;
+    --worker) WORKER="$2"; shift 2 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
 done
+
+# -- Worker command by language (without Docker only) --
+case "$WORKER" in
+  python)     WORKER_CMD="uv run --package banking-demo-workflows worker" ;;
+  go)         WORKER_CMD="cd workflows/go && go run ." ;;
+  typescript) WORKER_CMD="cd workflows/typescript && npm install --silent && npm run build && node lib/worker.js" ;;
+  java)       WORKER_CMD="cd workflows/java && gradle run --quiet --console=plain" ;;
+  dotnet)     WORKER_CMD="cd workflows/dotnet && dotnet run -c Release" ;;
+  ruby)       WORKER_CMD="cd workflows/ruby && bundle install --quiet && bundle exec ruby worker.rb" ;;
+  php)        WORKER_CMD="cd workflows/php && composer install --quiet && rr serve -c .rr.yaml" ;;
+  rust)       WORKER_CMD="cd workflows/rust && cargo run --release" ;;
+  *)
+    echo "Unknown worker: $WORKER (supported: python, go, typescript, java, dotnet, ruby, php, rust)"
+    exit 1
+    ;;
+esac
 
 # -- Check prerequisites --
 if [ -z "$CLOUD_ENV" ]; then
@@ -77,7 +96,7 @@ cleanup() {
   echo ""
   echo "Shutting down..."
   if [ "$MODE" = "docker" ]; then
-    docker compose --profile encrypt down --remove-orphans 2>/dev/null || true
+    docker compose --profile "*" down --remove-orphans 2>/dev/null || true
   fi
   for pid in "${PIDS[@]}"; do
     kill "$pid" 2>/dev/null || true
@@ -101,7 +120,7 @@ echo ""
 
 # -- Clean up stale containers --
 if [ "$MODE" = "docker" ]; then
-  docker compose --profile encrypt down --remove-orphans 2>/dev/null || true
+  docker compose --profile "*" down --remove-orphans 2>/dev/null || true
 fi
 
 # -- Start Temporal dev server (only when NOT using Cloud) --
@@ -131,6 +150,7 @@ build_banner() {
   echo "======================================"
   echo "  Banking Transfer Demo is running!"
   echo ""
+  echo "  Worker:     $WORKER"
   echo "  App:        http://localhost:5173"
   echo "  API:        http://localhost:8000"
   if [ -n "$CLOUD_ENV" ]; then
@@ -154,9 +174,9 @@ build_banner() {
 if [ "$MODE" = "docker" ]; then
 # =============================================
 
-  DOCKER_PROFILES=""
+  DOCKER_PROFILES="--profile $WORKER"
   if [ "$ENCRYPT" = "1" ]; then
-    DOCKER_PROFILES="--profile encrypt"
+    DOCKER_PROFILES="$DOCKER_PROFILES --profile encrypt"
   fi
 
   echo "Starting Docker containers..."
@@ -186,8 +206,8 @@ else
     sleep 1
   done
 
-  echo "Starting worker..."
-  BANKING_ENCRYPT="${ENCRYPT}" BANKING_BACKEND_URL=http://localhost:8000 uv run --package banking-demo-workflows worker &
+  echo "Starting worker ($WORKER)..."
+  BANKING_ENCRYPT="${ENCRYPT}" BANKING_BACKEND_URL=http://localhost:8000 bash -c "$WORKER_CMD" &
   PIDS+=($!)
 
   if [ "$ENCRYPT" = "1" ]; then

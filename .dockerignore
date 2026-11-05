@@ -7,3 +7,12 @@ frontend/dist
 .DS_Store
 .images
 cloud.env
+workflows/go/bin
+workflows/typescript/lib
+workflows/typescript/node_modules
+workflows/java/build
+workflows/java/.gradle
+workflows/dotnet/bin
+workflows/dotnet/obj
+workflows/rust/target
+workflows/php/vendor

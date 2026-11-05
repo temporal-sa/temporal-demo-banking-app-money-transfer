@@ -1,0 +1,21 @@
+[package]
+name = "banking-worker"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+publish = false
+
+[dependencies]
+aes-gcm = "0.10"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+futures = "0.3"
+prost = "0.14"
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+temporalio-client = "=1.1.2"
+temporalio-common = "=1.1.2"
+temporalio-macros = "=1.1.2"
+temporalio-sdk = "=1.1.2"
+temporalio-workflow = "=1.1.2"
+tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "time"] }

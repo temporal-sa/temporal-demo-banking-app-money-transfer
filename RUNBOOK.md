@@ -60,7 +60,7 @@ Every beat starts the same way: pick the scenario, then send a transfer.
 3. Press **Confirm transfer**. The phone switches to **Transfer Status**.
 4. When it finishes, press **New transfer** to go back to the accounts.
 
-To show the Workflow in another SDK language, pick it in the tabs under **Workflow code**.
+To show the Workflow in another SDK language, pick it in the tabs under **Workflow code**. The tabs only change what the panel shows. To run a different Worker, start the demo with `make demo WORKER=<language>`; every beat works the same way on all eight.
 
 The balances on screen are mock data and don't change after a transfer.
 
@@ -125,6 +125,18 @@ This beat needs a local run, because you edit the Workflow code and restart the 
 8. Say: "We fixed the code and restarted the Worker. The transfer picked up after the withdrawal it had already done, and didn't withdraw twice."
 9. Undo the edit afterwards: `git checkout -- workflows/python/src/banking_workflows/account_transfer_workflow_scenarios.py`.
 
+On another Worker, comment out that language's line in step 5, restart with `make worker WORKER=<language>` in step 6, and undo the same file in step 9.
+
+| Worker | File | Line | Code |
+|---|---|---|---|
+| Go | `workflows/go/transfer/workflow.go` | 170 | `panic("Simulated bug - fix me!")` |
+| TypeScript | `workflows/typescript/src/workflows.ts` | 100 | `throw new Error('Simulated bug - fix me!');` |
+| Java | `workflows/java/src/main/java/banking/AccountTransferWorkflow.java` | 78 | `throw new IllegalStateException("Simulated bug - fix me!");` |
+| .NET | `workflows/dotnet/AccountTransferWorkflow.workflow.cs` | 80 | `throw new InvalidOperationException("Simulated bug - fix me!");` |
+| Ruby | `workflows/ruby/lib/banking/account_transfer_workflow.rb` | 74 | `raise 'Simulated bug - fix me!' if @workflow_type == BUG` |
+| PHP | `workflows/php/src/TransferWorkflow.php` | 78 | `throw new \Error('Simulated bug - fix me!');` |
+| Rust | `workflows/rust/src/workflow.rs` | 156 | `panic!("Simulated bug - fix me!");` |
+
 The settings say this scenario "demonstrates versioning/patching". The walkthrough above fixes the code in place. The fix only adds steps after the point where the Workflow stopped, so the transfer's history replays cleanly on the new code.
 
 On tmprl-demo.cloud you can show steps 1 to 4 but not the fix. Terminate the transfer afterwards; see [Reset and tear down](#reset-and-tear-down).
@@ -151,10 +163,10 @@ On tmprl-demo.cloud, run this in a crashable environment; see [On tmprl-demo.clo
 1. Pick **Happy Path** and send a transfer. Any scenario works; Happy Path is the clearest.
 2. As soon as **Validate transfer** turns green, take the Worker away:
    - In a crashable environment, press **Scale down workers**. The catalog shows **Workers scaled to zero**.
-   - Locally, run `docker compose kill worker-python`.
+   - Locally, run `docker compose kill worker-python`, or `worker-<language>` if you started another Worker.
 3. The steps that finished stay green, the next step waits, and the badge at the top of **Behind the scenes** still reads **Running**. The phone stays on "Processing transfer…", and the app keeps answering. If you took the Worker away while a step was cyan, that step stays cyan.
 4. Say: "The process running the transfer code is gone. The transfer hasn't failed, and nothing is retrying in a loop. Temporal knows which steps are done and is holding the next one until a Worker asks for it."
-5. Bring the Worker back: press **Scale up workers**, or run `docker compose start worker-python`. Within a few seconds the next step runs and the transfer finishes. A step that was cyan runs again, because its attempt on the old Worker never reported back. Locally, a transfer finished after 15 seconds without a Worker.
+5. Bring the Worker back: press **Scale up workers**, or run `docker compose start worker-python` (or `worker-<language>`). Within a few seconds the next step runs and the transfer finishes. A step that was cyan runs again, because its attempt on the old Worker never reported back. Locally, a transfer finished after 15 seconds without a Worker.
 6. Say: "A new Worker picked up where the old one stopped. Nobody restarted the transfer, and the withdrawal didn't run twice."
 7. For proof, open the execution: one scheduled, started and completed set per step, with no failure.
 
@@ -410,6 +422,32 @@ async def encode(self, payloads: Iterable[Payload]) -> List[Payload]:
 - The key is hard-coded in the repo. Production keys come from a key management system, and the key ID in the metadata lets you rotate them.
 
 **Docs:** [Codec Server](https://docs.temporal.io/codec-server), [Set your Codec Server endpoints with Web UI and CLI](https://docs.temporal.io/production-deployment/data-encryption#web-ui)
+
+### Same Workflow, other SDKs
+
+**When to use it:** when someone asks what this looks like in their language.
+
+**Where it is:** one Workflow file per SDK, and the tabs under **Workflow code** show an excerpt of each.
+
+| SDK | Workflow |
+|---|---|
+| Go | [`workflows/go/transfer/workflow.go`](workflows/go/transfer/workflow.go) |
+| TypeScript | [`workflows/typescript/src/workflows.ts`](workflows/typescript/src/workflows.ts) |
+| Java | [`workflows/java/src/main/java/banking/AccountTransferWorkflow.java`](workflows/java/src/main/java/banking/AccountTransferWorkflow.java) |
+| .NET | [`workflows/dotnet/AccountTransferWorkflow.workflow.cs`](workflows/dotnet/AccountTransferWorkflow.workflow.cs) |
+| Ruby | [`workflows/ruby/lib/banking/account_transfer_workflow.rb`](workflows/ruby/lib/banking/account_transfer_workflow.rb) |
+| PHP | [`workflows/php/src/TransferWorkflow.php`](workflows/php/src/TransferWorkflow.php) |
+| Rust | [`workflows/rust/src/workflow.rs`](workflows/rust/src/workflow.rs) |
+
+**What you need to understand:**
+
+- Each one reads the same way: validate, withdraw, wait for approval if the scenario needs it, deposit, notify. The retry policy, the 5 second timeout and the 30 second approval deadline match Python's.
+- The scenario is the Workflow Type name. TypeScript, Java, .NET and Ruby use a dynamic Workflow like Python's. Go registers one function under all six names. PHP and Rust have no dynamic Workflows, so each has a small type per name that calls the shared code.
+- The approval wait is the idiom to compare: `wait_condition` with a timeout in Python, `AwaitWithTimeout` in Go, `condition` in TypeScript, `Workflow.await` in Java, `WaitConditionAsync` in .NET, `Workflow.timeout` around `wait_condition` in Ruby, `awaitWithTimeout` in PHP, and a `select!` over `wait_condition` and a timer in Rust.
+- The bug beat depends on one rule that holds in all eight: an error that isn't a Temporal failure fails the Workflow Task, not the Workflow. In Go and Rust that error is a panic, and in PHP it's an `\Error`, because a PHP `\Exception` fails the Workflow. In the rest it's a plain exception.
+- All eight encrypt to the same format, so the Python codec server decrypts any of them. PHP has no payload codec, so `EncryptingConverter` wraps the default converter instead.
+
+**Docs:** [Temporal SDKs](https://docs.temporal.io/encyclopedia/temporal-sdks), [Worker Versioning](https://docs.temporal.io/production-deployment/worker-deployments/worker-versioning)
 
 ### What's demo-only
 

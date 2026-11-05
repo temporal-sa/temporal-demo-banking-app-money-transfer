@@ -13,6 +13,7 @@ make demo                                  # Local Temporal dev server
 make demo ENCRYPT=1                        # Local + payload encryption
 make demo CLOUD_ENV=cloud.env              # Temporal Cloud
 make demo CLOUD_ENV=cloud.env ENCRYPT=1    # Cloud + encryption
+make demo WORKER=go                        # Run the Worker in another SDK
 make down                                  # Stop it
 ```
 
@@ -48,6 +49,32 @@ Switch to the **Bank operations** tab to act as a bank employee. When running th
 ### 4. Inspect real workflows
 
 The Temporal UI at http://localhost:8233 shows actual workflow executions with full event history.
+
+## Every SDK
+
+The same Workflow is implemented in all eight languages with a Temporal SDK, and the code panel has a tab for each. Pick the Worker with `WORKER`, which defaults to `python`:
+
+```bash
+make demo WORKER=typescript
+make worker WORKER=typescript    # Rebuild and restart it alone
+```
+
+| Language | `WORKER=` | SDK | How one Worker serves six Workflow Types |
+|---|---|---|---|
+| Python | `python` | `temporalio` | `AccountTransferWorkflow`, plus a dynamic Workflow for the other five |
+| Go | `go` | `go.temporal.io/sdk` | The same function registered under each name |
+| TypeScript | `typescript` | `@temporalio/*` | A dynamic Workflow, the default export |
+| Java | `java` | `io.temporal:temporal-sdk` | `DynamicWorkflow` |
+| .NET | `dotnet` | `Temporalio` | `[Workflow(Dynamic = true)]` |
+| Ruby | `ruby` | `temporalio` | `workflow_dynamic` |
+| PHP | `php` | `temporal/sdk` on RoadRunner | A small subclass per name, because the SDK has no dynamic Workflows |
+| Rust | `rust` | `temporalio-sdk` | A small type per name, because the SDK has no dynamic Workflows |
+
+The API starts Workflows and sends Signals by name, so it works with any of them. They share the `MoneyTransfer` Task Queue, the `approveTransfer` Signal, the `transferStatus` Query, the step events and the codec format, so `ENCRYPT=1` works with every language and one codec server decrypts them all. Run one Worker at a time: they poll the same queue and their Activity names differ, so a second language would pick up tasks it can't run.
+
+With `CLOUD_ENV`, the Workers read the same address, Namespace, API key and certificate settings, but only the Python Worker has been run against Temporal Cloud. The PHP Worker can't connect yet: RoadRunner takes its TLS settings from `.rr.yaml`, which doesn't set them.
+
+The catalog runs the Python Worker. The AWS Lambda image below is Python only.
 
 ## Payload Encryption
 
@@ -130,9 +157,8 @@ FastAPI Backend (Python)
            |
 Temporal Dev Server (container, local profile)
            |
-Python Worker [encrypts/decrypts payloads when ENCRYPT=1]
-    |-- AccountTransferWorkflow (happy path)
-    |-- AccountTransferWorkflowScenarios (dynamic, 5 other scenarios)
+Worker in any SDK [encrypts/decrypts payloads when ENCRYPT=1]
+    |-- The account transfer Workflow (six Workflow Types, one per scenario)
     +-- Activities -> Backend internal API
 
 Codec Server (optional, ENCRYPT=1 only)
@@ -140,9 +166,11 @@ Codec Server (optional, ENCRYPT=1 only)
     +-- POST /decode — decrypts payloads for Temporal UI
 ```
 
-Two workflow classes:
+The Python Worker has two workflow classes:
 - **`AccountTransferWorkflow`** — clean happy path
 - **`AccountTransferWorkflowScenarios`** — `@workflow.defn(dynamic=True)`, branches on workflow type name for the other 5 scenarios
+
+The other Workers use one Workflow for all six scenarios, branching the same way.
 
 ## Transfer Flow
 
@@ -171,10 +199,18 @@ The demo supports the tmprl-demo.cloud catalog's crashable workspaces. A crashab
 ├── frontend/              # React 19 + Vite + TypeScript + Tailwind 4
 │   └── src/components/    # PhoneFrame, TransferTracker, BankOperations, etc.
 ├── backend/               # FastAPI + mock bank services (Python)
-├── workflows/python/      # Python worker — two workflow classes + activities
-│   └── src/banking_workflows/
-│       ├── codec.py           # AES-GCM PayloadCodec (used when ENCRYPT=1)
-│       └── codec_server.py    # HTTP codec server for Temporal UI decryption
+├── workflows/
+│   ├── python/            # Python worker — two workflow classes + activities
+│   │   └── src/banking_workflows/
+│   │       ├── codec.py           # AES-GCM PayloadCodec (used when ENCRYPT=1)
+│   │       └── codec_server.py    # HTTP codec server for Temporal UI decryption
+│   ├── go/                # Go worker
+│   ├── typescript/        # TypeScript worker
+│   ├── java/              # Java worker
+│   ├── dotnet/            # .NET worker
+│   ├── ruby/              # Ruby worker
+│   ├── php/               # PHP worker, run by RoadRunner
+│   └── rust/              # Rust worker
 ├── docker/                # Dockerfiles (with test stages) + nginx config
 ├── docker-compose.yml     # Dev server (local profile), backend, worker, frontend, codec-server (encrypt profile)
 ├── docker-compose.dev.yml # Source mounts for make dev
@@ -189,7 +225,9 @@ make dev     # The stack with source mounts: the API and frontend reload on save
 make test    # Ruff and pytest on the Python packages; type-check, ESLint and build the frontend
 ```
 
-The Worker doesn't reload in `make dev`. Restart it after an edit with `docker compose restart worker-python`.
+`make test` doesn't cover the other Workers. `make worker WORKER=<language>` compiles one in its image. The excerpts in `frontend/src/data/workflowCode.ts` are copied by hand, so update them when a Workflow changes.
+
+The Worker doesn't reload in `make dev`. Restart the Python Worker after an edit with `docker compose restart worker-python`, and rebuild the others with `make worker WORKER=<language>`.
 
 ### Without Docker
 
@@ -207,6 +245,8 @@ cd frontend && npm run dev                                                      
 BANKING_ENCRYPT=1 BANKING_BACKEND_URL=http://localhost:8000 uv run --package banking-demo-workflows worker
 uv run python -m banking_workflows.codec_server                                          # Codec server on :8081
 ```
+
+`./scripts/start.sh --worker <language>` picks the Worker. Without Docker that needs the language's own toolchain: Go 1.26, Node 22, JDK 21 with Gradle, .NET 8, Ruby 3.4 with Bundler, PHP 8.4 with Composer and RoadRunner, or Rust 1.92 with `protoc`.
 
 ## Settings
 

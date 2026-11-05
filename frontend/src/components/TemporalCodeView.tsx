@@ -21,135 +21,146 @@ interface Syntax {
   domain: Set<string>
 }
 
+const ACTIVITY_NAMES = [
+  'validate', 'withdraw', 'deposit', 'sendNotification', 'undoWithdraw', 'registerApproval',
+  'removeApproval', 'send_notification', 'undo_withdraw', 'register_approval', 'remove_approval',
+  'Validate', 'Withdraw', 'Deposit', 'SendNotification', 'UndoWithdraw', 'RegisterApproval',
+  'RemoveApproval', 'ValidateAsync', 'WithdrawAsync', 'DepositAsync', 'SendNotificationAsync',
+  'UndoWithdrawAsync', 'RegisterApprovalAsync', 'RemoveApprovalAsync',
+]
+
 const SYNTAX: Record<CodeLanguage, Syntax> = {
   python: {
     comment: '#',
     keywords: new Set([
-      'class', 'async', 'def', 'await', 'for', 'in', 'try', 'except',
-      'if', 'return', 'lambda',
+      'class', 'async', 'def', 'await', 'try', 'except', 'as', 'if', 'return', 'lambda', 'raise',
     ]),
     constants: new Set(['True', 'False', 'None', 'self']),
-    builtins: new Set(['workflow', 'activity', 'RetryPolicy', 'timedelta']),
+    builtins: new Set([
+      'workflow', 'AccountTransferActivities', 'ApplicationError', 'RuntimeError', 'Exception',
+      'TransferInput', 'TransferOutput', 'DepositResponse', 'timedelta', 'asyncio', 'TimeoutError',
+    ]),
     methods: new Set([
-      'execute_activity', 'wait_condition', 'defn', 'run', 'signal', 'query', 'append',
+      'execute_activity', 'wait_condition', 'defn', 'run', 'uuid4', 'payload_converter', 'info',
+      'from_payload',
     ]),
-    domain: new Set([
-      'validate', 'withdraw', 'deposit', 'send_notification', 'undo_withdraw',
-      'compensations', 'transfer', 'comp',
-    ]),
+    domain: new Set([...ACTIVITY_NAMES, 'updateProgress', 'updateProgressStatus']),
   },
   go: {
     comment: '//',
-    keywords: new Set(['func', 'var', 'defer', 'if', 'for', 'return', 'any', 'bool', 'error']),
+    keywords: new Set(['func', 'var', 'if', 'return', 'bool', 'error', 'panic']),
     constants: new Set(['nil', 'true', 'false']),
-    builtins: new Set(['workflow', 'temporal', 'time', 'Context', 'RetryPolicy']),
+    builtins: new Set([
+      'workflow', 'temporal', 'time', 'Context', 'RetryPolicy', 'ActivityOptions', 'Activities',
+      'Input', 'Output', 'DepositResponse',
+    ]),
     methods: new Set([
-      'ExecuteActivity', 'WithRetryPolicy', 'AwaitWithTimeout', 'Get', 'append', 'len',
+      'ExecuteActivity', 'WithActivityOptions', 'AwaitWithTimeout', 'Get', 'GetInfo',
+      'NewNonRetryableApplicationError',
     ]),
-    domain: new Set([
-      'Validate', 'Withdraw', 'Deposit', 'SendNotification', 'UndoWithdraw',
-      'compensations', 'compensate', 'comps', 'transfer', 'Transfer',
-    ]),
+    domain: new Set([...ACTIVITY_NAMES, 'AccountTransfer']),
   },
   typescript: {
     comment: '//',
     keywords: new Set([
-      'export', 'async', 'function', 'const', 'await', 'try', 'catch', 'for', 'of', 'void',
+      'export', 'default', 'async', 'function', 'const', 'await', 'try', 'catch', 'if', 'throw',
+      'return', 'new', 'typeof', 'instanceof',
     ]),
     constants: new Set(['true', 'false', 'null', 'undefined']),
-    builtins: new Set(['Promise', 'Activities', 'Compensation', 'Transfer']),
-    methods: new Set(['proxyActivities', 'condition', 'push', 'reverse']),
-    domain: new Set([
-      'validate', 'withdraw', 'deposit', 'sendNotification', 'undoWithdraw',
-      'compensations', 'transfer', 'comp',
+    builtins: new Set([
+      'Promise', 'ApplicationFailure', 'ActivityFailure', 'Error', 'ReturnType', 'TransferInput',
+      'TransferOutput',
     ]),
+    methods: new Set([
+      'proxyActivities', 'condition', 'nonRetryable', 'workflowInfo', 'uuid4', 'createActivities',
+    ]),
+    domain: new Set([...ACTIVITY_NAMES, 'accountTransfer', 'updateProgress']),
   },
   java: {
     comment: '//',
     keywords: new Set([
-      'public', 'class', 'implements', 'void', 'new', 'try', 'catch', 'for',
+      'public', 'private', 'final', 'class', 'implements', 'new', 'try', 'catch', 'if', 'throw',
+      'return',
     ]),
     constants: new Set(['true', 'false', 'null', 'this']),
     builtins: new Set([
       'Workflow', 'ActivityOptions', 'RetryOptions', 'Duration', 'ActivityFailure',
-      'Activities', 'List', 'ArrayList', 'Consumer', 'Collections', 'Transfer',
+      'ApplicationFailure', 'DynamicWorkflow', 'EncodedValues', 'IllegalStateException', 'Object',
+      'String', 'TransferActivities', 'TransferInput', 'TransferOutput', 'TransferMessages',
     ]),
     methods: new Set([
-      'newActivityStub', 'newBuilder', 'setRetryOptions', 'setMaximumAttempts',
-      'setBackoffCoefficient', 'build', 'await', 'ofSeconds', 'add', 'reverse', 'accept',
+      'newActivityStub', 'newBuilder', 'setStartToCloseTimeout', 'setRetryOptions',
+      'setInitialInterval', 'setBackoffCoefficient', 'setMaximumInterval', 'build', 'await',
+      'ofSeconds', 'randomUUID', 'getInfo', 'newNonRetryableFailure',
     ]),
-    domain: new Set([
-      'validate', 'withdraw', 'deposit', 'sendNotification', 'undoWithdraw',
-      'compensations', 'transfer', 'comp', 'activities',
-    ]),
+    domain: new Set([...ACTIVITY_NAMES, 'activities', 'updateProgress', 'execute']),
   },
   dotnet: {
     comment: '//',
     keywords: new Set([
-      'public', 'class', 'async', 'await', 'var', 'new', 'try', 'catch', 'foreach', 'in',
+      'public', 'private', 'static', 'readonly', 'class', 'async', 'await', 'var', 'new', 'try',
+      'catch', 'if', 'throw', 'return',
     ]),
     constants: new Set(['true', 'false', 'null', 'this']),
     builtins: new Set([
-      'Workflow', 'WorkflowRun', 'Task', 'List', 'Func', 'TimeSpan',
-      'ActivityFailureException', 'Activities', 'Transfer',
+      'Workflow', 'WorkflowRun', 'Task', 'TimeSpan', 'ActivityOptions', 'ActivityFailureException',
+      'ApplicationFailureException', 'InvalidOperationException', 'IRawValue', 'TransferActivities',
+      'TransferInput', 'TransferOutput',
     ]),
     methods: new Set([
-      'ExecuteActivityAsync', 'WaitConditionAsync', 'FromSeconds', 'Add', 'Reverse',
-      'RetryPolicy', 'MaximumAttempts', 'BackoffCoefficient',
+      'ExecuteActivityAsync', 'WaitConditionAsync', 'FromSeconds', 'NewGuid', 'ToValue',
+      'StartToCloseTimeout', 'RetryPolicy', 'InitialInterval', 'BackoffCoefficient',
+      'MaximumInterval',
     ]),
-    domain: new Set([
-      'ValidateAsync', 'WithdrawAsync', 'DepositAsync', 'SendNotificationAsync',
-      'UndoWithdrawAsync', 'compensations', 'transfer', 'comp',
-    ]),
+    domain: new Set([...ACTIVITY_NAMES, 'RunAsync', 'UpdateProgressAsync']),
   },
   ruby: {
     comment: '#',
-    keywords: new Set(['class', 'def', 'begin', 'rescue', 'do', 'end']),
+    keywords: new Set(['class', 'def', 'begin', 'rescue', 'if', 'raise', 'end']),
     constants: new Set(['true', 'false', 'nil', 'self']),
-    builtins: new Set(['Temporalio', 'Workflow', 'Definition', 'RetryPolicy', 'StandardError']),
-    methods: new Set(['execute_activity', 'wait_condition', 'new', 'reverse_each']),
-    domain: new Set([
-      'Validate', 'Withdraw', 'Deposit', 'SendNotification', 'UndoWithdraw',
-      'compensations', 'transfer', 'comp',
+    builtins: new Set([
+      'Temporalio', 'Workflow', 'Definition', 'RetryPolicy', 'Activities', 'ApplicationError',
+      'Timeout', 'Error', 'ActivityError',
     ]),
+    methods: new Set([
+      'execute_activity', 'wait_condition', 'timeout', 'workflow_dynamic', 'workflow_raw_args',
+      'new', 'merge', 'payload_converter', 'from_payload', 'uuid',
+    ]),
+    domain: new Set([...ACTIVITY_NAMES, 'execute', 'update_progress']),
   },
   php: {
     comment: '//',
-    keywords: new Set(['class', 'public', 'function', 'new', 'try', 'catch', 'yield', 'fn']),
+    keywords: new Set([
+      'class', 'public', 'function', 'new', 'try', 'catch', 'yield', 'from', 'fn', 'if', 'throw',
+      'return', 'array', 'self', 'abstract', 'extends', 'protected',
+    ]),
     constants: new Set(['true', 'false', 'null', 'this']),
     builtins: new Set([
-      'Workflow', 'Saga', 'ActivityOptions', 'RetryOptions', 'AccountActivities',
-      'Transfer', 'Throwable',
+      'Workflow', 'ActivityOptions', 'RetryOptions', 'TransferActivities', 'ActivityFailure',
+      'ApplicationFailure', 'Error',
     ]),
     methods: new Set([
-      'newActivityStub', 'withRetryOptions', 'withMaximumAttempts', 'withBackoffCoefficient',
-      'awaitWithTimeout', 'addCompensation', 'compensate',
+      'newActivityStub', 'withStartToCloseTimeout', 'withRetryOptions', 'withInitialInterval',
+      'withBackoffCoefficient', 'withMaximumInterval', 'awaitWithTimeout', 'getInfo', 'uuid',
     ]),
-    domain: new Set([
-      'validate', 'withdraw', 'deposit', 'sendNotification', 'undoWithdraw',
-      'saga', 'transfer', 'accounts',
-    ]),
+    domain: new Set([...ACTIVITY_NAMES, 'run', 'transfer', 'updateProgress', 'activities']),
   },
   rust: {
     comment: '//',
     keywords: new Set([
-      'impl', 'pub', 'async', 'fn', 'let', 'mut', 'for', 'in', 'if', 'await', 'Self',
+      'async', 'fn', 'let', 'match', 'if', 'return', 'await', 'mut', 'panic', 'select',
     ]),
     constants: new Set(['true', 'false', 'Ok', 'Err']),
     builtins: new Set([
-      'WorkflowContext', 'WorkflowResult', 'Result', 'ActivityExecutionError', 'Vec',
-      'ActivityOptions', 'RetryPolicy', 'Duration', 'Activities',
+      'WorkflowContext', 'WorkflowResult', 'ActivityOptions', 'RetryPolicy', 'Duration',
+      'TransferActivities', 'ApplicationFailure', 'TransferInput', 'TransferOutput', 'Transfer',
     ]),
     methods: new Set([
-      'start_activity', 'wait_condition', 'timer', 'state', 'select', 'push', 'clone',
-      'with_start_to_close_timeout', 'start_to_close_timeout', 'retry_policy', 'builder',
-      'maximum_attempts', 'backoff_coefficient', 'build', 'from_secs', 'into_iter', 'rev',
-      'ok', 'is_err',
+      'execute_activity', 'wait_condition', 'timer', 'uuid4', 'with_start_to_close_timeout',
+      'retry_policy', 'builder', 'initial_interval', 'backoff_coefficient', 'maximum_interval',
+      'build', 'from_secs', 'type_name', 'non_retryable', 'into', 'clone',
     ]),
-    domain: new Set([
-      'validate', 'withdraw', 'deposit', 'send_notification', 'send_failure_notification',
-      'undo_withdraw', 'compensations', 'transfer', 'comp',
-    ]),
+    domain: new Set([...ACTIVITY_NAMES, 'account_transfer', 'activity_options', 'update_progress']),
   },
 }
 
@@ -246,9 +257,10 @@ export function TemporalCodeView({ events, language, onLanguageChange }: Tempora
   const preRef = useRef<HTMLPreElement>(null)
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
-  // The step that moved most recently is the one the Workflow is on.
-  const current = events.at(-1)
-  const currentStep = current?.step
+  // The step that moved most recently is the one the Workflow is on, except that
+  // a wait stays lit until it clears, whatever else reports in meanwhile.
+  const waiting = stepState('approval_wait', events).status === 'waiting'
+  const currentStep = waiting ? 'approval_wait' : events.at(-1)?.step
   const currentStatus = currentStep ? stepState(currentStep, events).status : undefined
 
   useEffect(() => {

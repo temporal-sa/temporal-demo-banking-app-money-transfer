@@ -1,0 +1,19 @@
+{
+  "name": "banking/worker",
+  "description": "Money transfer Temporal Worker",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.4",
+    "ext-openssl": "*",
+    "ext-sockets": "*",
+    "symfony/http-client": "^7.0",
+    "temporal/sdk": "2.20.*"
+  },
+  "autoload": {
+    "classmap": ["src/"]
+  },
+  "config": {
+    "sort-packages": true
+  }
+}

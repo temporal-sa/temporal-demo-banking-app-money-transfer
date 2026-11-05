@@ -1,6 +1,7 @@
 # Edit loop for `make dev`: source mounts over docker-compose.yml.
 # The API reloads on save and the frontend runs the Vite dev server with hot reload.
 # The Worker doesn't reload; restart it after an edit with `docker compose restart worker-python`.
+# Only the Python Worker gets source mounts. For the others, rebuild with `make worker WORKER=<language>`.
 
 services:
   backend:
