@@ -21,9 +21,9 @@ from banking_demo.models import (
 )
 from banking_demo.sessions import Session, TransferRecord
 from banking_demo.temporal_ui import (
-    temporal_namespace,
     temporal_namespace_url,
     temporal_ui_base_url,
+    temporal_ui_namespace,
     temporal_workflow_url,
 )
 
@@ -116,7 +116,7 @@ async def health():
 async def temporal_ui():
     return {
         "base_url": temporal_ui_base_url(),
-        "namespace": temporal_namespace(),
+        "namespace": temporal_ui_namespace(),
         "namespace_url": temporal_namespace_url(),
     }
 
