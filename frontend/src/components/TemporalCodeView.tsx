@@ -39,6 +39,7 @@ const SYNTAX: Record<CodeLanguage, Syntax> = {
     builtins: new Set([
       'workflow', 'AccountTransferActivities', 'ApplicationError', 'RuntimeError', 'Exception',
       'TransferInput', 'TransferOutput', 'DepositResponse', 'timedelta', 'asyncio', 'TimeoutError',
+      'Sequence', 'RawValue', 'Any',
     ]),
     methods: new Set([
       'execute_activity', 'wait_condition', 'defn', 'run', 'uuid4', 'payload_converter', 'info',
@@ -55,7 +56,7 @@ const SYNTAX: Record<CodeLanguage, Syntax> = {
       'Input', 'Output', 'DepositResponse',
     ]),
     methods: new Set([
-      'ExecuteActivity', 'WithActivityOptions', 'AwaitWithTimeout', 'Get', 'GetInfo',
+      'ExecuteActivity', 'WithActivityOptions', 'AwaitWithTimeout', 'Get', 'GetInfo', 'Sprintf',
       'NewNonRetryableApplicationError',
     ]),
     domain: new Set([...ACTIVITY_NAMES, 'AccountTransfer']),
@@ -141,7 +142,7 @@ const SYNTAX: Record<CodeLanguage, Syntax> = {
     ]),
     methods: new Set([
       'newActivityStub', 'withStartToCloseTimeout', 'withRetryOptions', 'withInitialInterval',
-      'withBackoffCoefficient', 'withMaximumInterval', 'awaitWithTimeout', 'getInfo', 'uuid',
+      'withBackoffCoefficient', 'withMaximumInterval', 'awaitWithTimeout', 'getInfo', 'uuid', 'sprintf',
     ]),
     domain: new Set([...ACTIVITY_NAMES, 'run', 'transfer', 'updateProgress', 'activities']),
   },
@@ -153,7 +154,7 @@ const SYNTAX: Record<CodeLanguage, Syntax> = {
     constants: new Set(['true', 'false', 'Ok', 'Err']),
     builtins: new Set([
       'WorkflowContext', 'WorkflowResult', 'ActivityOptions', 'RetryPolicy', 'Duration',
-      'TransferActivities', 'ApplicationFailure', 'TransferInput', 'TransferOutput', 'Transfer',
+      'temporalio_sdk', 'workflows', 'TransferActivities', 'ApplicationFailure', 'TransferInput', 'TransferOutput', 'Transfer',
     ]),
     methods: new Set([
       'execute_activity', 'wait_condition', 'timer', 'uuid4', 'with_start_to_close_timeout',

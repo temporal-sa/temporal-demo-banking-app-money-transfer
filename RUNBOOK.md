@@ -85,7 +85,7 @@ The **Workflow code** panel is a simplified picture of the Workflow, not a copy 
 4. Say: "The withdrawal service was down for a few seconds. Nobody wrote retry code for that. The Activity has a retry policy, and Temporal retried it with backoff until the service came back."
 5. For proof, open the execution while it's retrying: the pending Activity shows its attempt count and last failure. The Event History doesn't get an event per failed attempt; it records the Activity once, when it finishes.
 
-The settings say the deposit fails in this scenario. In the code, it's the withdrawal. The real retry policy has no attempt limit, whatever the **Workflow code** panel shows.
+The settings say the deposit fails in this scenario. In the code, it's the withdrawal. The retry policy has no attempt limit.
 
 ### 3. The deposit is rejected, and the money goes back (Invalid Account)
 
